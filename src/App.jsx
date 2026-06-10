@@ -195,7 +195,7 @@ function AudioPlayer({ chapter }) {
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrTime] = useState(0);
-  const src = `https://www.wordproject.org/bibles/audio/english/web/20/${String(chapter).padStart(3,"0")}.mp3`;
+  const src = `https://audio.esv.org/hw/mq/Prov.${chapter}.mp3`;
   const fmt = s => { const m=Math.floor(s/60),sec=Math.floor(s%60); return `${m}:${sec.toString().padStart(2,"0")}`; };
 
   useEffect(() => { setPlaying(false); setProgress(0); setCurrTime(0); setDuration(0); }, [chapter]);
