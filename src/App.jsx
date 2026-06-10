@@ -231,7 +231,7 @@ function BibleReader({ chapter, onUseVerse }) {
   useEffect(() => {
     setPicked(null);
     setLoading(true);
-    fetch(`https://bible-api.com/proverbs+${chapter}?translation=web`)
+    fetch(`https://bible-api.com/proverbs+${chapter}?translation=esv`)
       .then(r => r.json())
       .then(d => { setVerses(d.verses||[]); setLoading(false); })
       .catch(() => setLoading(false));
