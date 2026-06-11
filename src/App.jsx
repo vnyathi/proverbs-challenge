@@ -273,13 +273,11 @@ export default function ProverbsChallenge() {
 
   useEffect(() => {
     (async () => {
-      try {
-        const r=await store.get("me",false);
-        if (r&&r.value) {
-          const p=JSON.parse(r.value); setMe(p);
-          try { const m=await store.get("user:"+p.id,true); if(m&&m.value) setMyEntries(JSON.parse(m.value).entries||{}); } catch(e){}
-        }
-      } catch(e){}
+      const saved = localStorage.getItem("me");
+      if (saved) {
+        const p = JSON.parse(saved); setMe(p);
+        try { const m=await store.get("user:"+p.id,true); if(m&&m.value) setMyEntries(JSON.parse(m.value).entries||{}); } catch(e){}
+      }
       await loadParticipants(); await loadSocial();
       setOpen(todayChapter()||1); setLoading(false);
     })();
@@ -311,7 +309,7 @@ export default function ProverbsChallenge() {
   const resume = async person => {
     const p={id:person.id,name:person.name,pinHash:person.pinHash};
     setMe(p); setMyEntries(person.entries||{}); setOpen(todayChapter()||1);
-    try { await store.set("me",JSON.stringify(p),false); } catch(e){}
+    localStorage.setItem("me", JSON.stringify(p));
   };
 
   const askPin = person => { setPinFor(person); setPinInput(""); setPinError(""); };
@@ -334,7 +332,7 @@ export default function ProverbsChallenge() {
     const person={id,name,pinHash};
     setMe(person); setMyEntries({}); setOpen(todayChapter()||1);
     try {
-      await store.set("me",JSON.stringify(person),false);
+      localStorage.setItem("me", JSON.stringify(person));
       await store.set("user:"+id,JSON.stringify({...person,entries:{},updatedAt:Date.now()}),true);
       loadParticipants();
     } catch(e){}
@@ -346,14 +344,14 @@ export default function ProverbsChallenge() {
   };
 
   const switchReader = async () => {
-    try { await store.delete("me",false); } catch(e){}
+    localStorage.removeItem("me");
     setMe(null);setMyEntries({});setNameInput("");setNewPin("");setViewing(null);
   };
 
   const deleteMe = async () => {
     if(!me) return;
     try { await store.delete("user:"+me.id,true); } catch(e){}
-    try { await store.delete("me",false); } catch(e){}
+    localStorage.removeItem("me");
     setConfirmDelete(false);setMe(null);setMyEntries({});setNameInput("");setNewPin("");setViewing(null);
     loadParticipants();
   };
