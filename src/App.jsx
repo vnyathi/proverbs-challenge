@@ -275,6 +275,8 @@ export default function ProverbsChallenge() {
   const [commentDraft, setCommentDraft] = useState("");
   const [paused, setPaused] = useState(false);
   const [picker, setPicker] = useState(null);
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifs, setShowNotifs] = useState(false);
   const saveTimer = useRef(null);
   const rowRefs = useRef({});
 
@@ -302,7 +304,72 @@ export default function ProverbsChallenge() {
     } catch(e) { setSocial({}); }
   }, []);
 
-  const sKey = (aid,ch) => aid+":"+ch;
+  const loadNotifications = useCallback(async (currentMe, currentEntries) => {
+    if (!currentMe) return;
+    try {
+      const lastSeen = +(localStorage.getItem("notif-seen-" + currentMe.id) || 0);
+      const listing = await store.list("social:", true);
+      const keys = (listing && listing.keys) || [];
+      const notifs = [];
+      for (const k of keys) {
+        // key format: "social:userId:chapter" — only care about keys matching me
+        const parts = k.replace("social:","").split(":");
+        if (parts.length < 2) continue;
+        const authorId = parts[0], ch = +parts[1];
+        if (authorId !== currentMe.id) continue;
+        try {
+          const r = await store.get(k, true);
+          if (!r || !r.value) continue;
+          const data = JSON.parse(r.value);
+          // New reactions
+          Object.entries(data.reactions || {}).forEach(([emoji, ids]) => {
+            (ids || []).forEach(uid => {
+              if (uid === currentMe.id) return;
+              // Find reactor name
+              notifs.push({ type:"reaction", emoji, uid, ch, ts: lastSeen + 1 });
+            });
+          });
+          // New comments
+          (data.comments || []).forEach(c => {
+            if (c.byId === currentMe.id) return;
+            if (c.ts > lastSeen) {
+              notifs.push({ type:"comment", byName: c.byName, text: c.text, ch, ts: c.ts });
+            }
+          });
+        } catch(e) {}
+      }
+      // For reactions we can't know exact time so we track by count change
+      // Store reaction snapshot and diff
+      const snapKey = "rx-snap-" + currentMe.id;
+      const prevSnap = JSON.parse(localStorage.getItem(snapKey) || "{}");
+      const newRxNotifs = [];
+      for (const k of keys) {
+        const parts = k.replace("social:","").split(":");
+        if (parts.length < 2) continue;
+        const authorId = parts[0], ch = +parts[1];
+        if (authorId !== currentMe.id) continue;
+        try {
+          const r = await store.get(k, true);
+          if (!r || !r.value) continue;
+          const data = JSON.parse(r.value);
+          const snapK = ch + "";
+          const prev = prevSnap[snapK] || {};
+          Object.entries(data.reactions || {}).forEach(([emoji, ids]) => {
+            const prevIds = prev[emoji] || [];
+            const newReactors = (ids || []).filter(id => id !== currentMe.id && !prevIds.includes(id));
+            newReactors.forEach(uid => {
+              newRxNotifs.push({ type:"reaction", emoji, uid, ch, ts: Date.now() });
+            });
+          });
+          prevSnap[snapK] = data.reactions || {};
+        } catch(e) {}
+      }
+      localStorage.setItem(snapKey, JSON.stringify(prevSnap));
+      const allNotifs = [...newRxNotifs, ...notifs.filter(n => n.type === "comment")];
+      allNotifs.sort((a,b) => b.ts - a.ts);
+      setNotifications(allNotifs);
+    } catch(e) {}
+  }, []);
   const getSocial = (aid,ch) => social[sKey(aid,ch)]||{reactions:{},comments:[]};
   const saveSocial = async (aid,ch,data) => {
     setSocial(s=>({...s,[sKey(aid,ch)]:data}));
@@ -332,8 +399,9 @@ export default function ProverbsChallenge() {
       }
       await loadParticipants(); await loadSocial();
       setOpen(todayChapter()||1); setLoading(false);
+      if (me) await loadNotifications(me, myEntries);
     })();
-  }, [loadParticipants, loadSocial]);
+  }, [loadParticipants, loadSocial, loadNotifications]);
 
   useEffect(() => { setNoteIdx(0); setCommentDraft(""); setPicker(null); }, [open]);
   useEffect(() => {
@@ -341,8 +409,11 @@ export default function ProverbsChallenge() {
     const id=setInterval(()=>setNoteIdx(i=>i+1),5000); return ()=>clearInterval(id);
   }, [open,paused,picker]);
   useEffect(() => {
-    const id=setInterval(()=>{loadParticipants();loadSocial();},20000); return ()=>clearInterval(id);
-  }, [loadParticipants,loadSocial]);
+    const id = setInterval(async () => {
+      await loadParticipants(); await loadSocial();
+      if (me) await loadNotifications(me, myEntries);
+    }, 20000); return ()=>clearInterval(id);
+  }, [loadParticipants, loadSocial, loadNotifications, me, myEntries]);
 
   const persist = useCallback((entries,person) => {
     setSaving(true); if(saveTimer.current) clearTimeout(saveTimer.current);
@@ -532,6 +603,20 @@ export default function ProverbsChallenge() {
     .pv-cmtform{display:flex;gap:7px;margin-top:10px;}
     .pv-cmtin{flex:1;min-width:0;border:1px solid rgba(140,98,36,.3);border-radius:16px;padding:7px 11px;background:rgba(255,255,255,.65);font-family:'Spectral',serif;font-size:13px;color:#3a2f1c;outline:none;}
     .pv-cmtbtn{background:var(--gold-d);color:#fff;border:none;border-radius:16px;padding:0 13px;font-family:'Fraunces',serif;font-size:12px;cursor:pointer;}
+    .pv-bell{position:relative;cursor:pointer;background:none;border:none;font-size:20px;padding:2px 6px;line-height:1;}
+    .pv-badge{position:absolute;top:-2px;right:-2px;background:#e53e3e;color:#fff;border-radius:50%;width:16px;height:16px;font-size:9px;font-family:'Fraunces',serif;font-weight:700;display:flex;align-items:center;justify-content:center;}
+    .pv-notifs{position:fixed;top:0;right:0;width:min(340px,100vw);height:100vh;background:var(--card);border-left:1px solid var(--line);z-index:70;overflow-y:auto;box-shadow:-8px 0 30px rgba(44,36,23,.15);}
+    .pv-nhead{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 12px;border-bottom:1px solid var(--line);}
+    .pv-ntitle{font-family:'Fraunces',serif;font-weight:700;font-size:16px;}
+    .pv-nclose{background:none;border:none;font-size:20px;cursor:pointer;color:var(--soft);}
+    .pv-nitem{display:flex;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);align-items:flex-start;}
+    .pv-nitem.new{background:#fef9ec;}
+    .pv-nicon{font-size:20px;flex:0 0 auto;margin-top:2px;}
+    .pv-ntext{font-size:13.5px;line-height:1.45;color:var(--ink);}
+    .pv-ntext b{font-family:'Fraunces',serif;font-weight:600;}
+    .pv-nch{font-size:11px;color:var(--soft);font-style:italic;margin-top:2px;}
+    .pv-nempty{text-align:center;padding:40px 20px;font-style:italic;color:var(--soft);font-size:14px;}
+    .pv-nmark{display:block;width:calc(100% - 32px);margin:12px 16px;background:var(--gold-d);color:#fff;border:none;border-radius:6px;padding:10px;font-family:'Fraunces',serif;font-size:13px;cursor:pointer;}
     .pv-dl{display:block;width:100%;margin:24px 0 8px;background:var(--gold);color:#fff;border:none;font-family:'Fraunces',serif;font-weight:600;font-size:14px;padding:13px;border-radius:8px;cursor:pointer;letter-spacing:.04em;}
     .pv-dl:hover{background:var(--gold-d);}
     .pv-foot{text-align:center;color:var(--soft);font-style:italic;font-size:14px;margin-top:26px;}
@@ -602,12 +687,54 @@ export default function ProverbsChallenge() {
         <div className="pv-rule"/>
       </div>
       <div className="pv-status">
-        <div className="pv-reader"><Avatar name={me.name} i={0}/><span style={{fontFamily:"'Fraunces',serif",fontWeight:600}}>{me.name}</span><button className="pv-chip" onClick={switchReader}>Sign out</button></div>
+        <div className="pv-reader">
+          <Avatar name={me.name} i={0}/>
+          <span style={{fontFamily:"'Fraunces',serif",fontWeight:600}}>{me.name}</span>
+          <button className="pv-chip" onClick={switchReader}>Sign out</button>
+        </div>
         <div className="pv-prog">
           <div className="pv-ptrack"><div className="pv-pfill" style={{width:`${(activeDone/31)*100}%`}}/></div>
           <div className="pv-pnum"><span>{activeDone} of 31 chapters</span><span>{readOnly?"read only":saving?"Saving…":"Saved"}</span></div>
         </div>
+        <button className="pv-bell" onClick={()=>setShowNotifs(true)}>
+          🔔{notifications.length>0&&<span className="pv-badge">{notifications.length}</span>}
+        </button>
       </div>
+
+      {showNotifs && (
+        <div className="pv-notifs">
+          <div className="pv-nhead">
+            <span className="pv-ntitle">🔔 Notifications</span>
+            <button className="pv-nclose" onClick={()=>setShowNotifs(false)}>✕</button>
+          </div>
+          {notifications.length === 0
+            ? <div className="pv-nempty">No new notifications yet.<br/>When friends react or comment on your verses, they'll appear here.</div>
+            : <>
+                {notifications.map((n,i) => {
+                  const reactor = participants.find(p=>p.id===n.uid);
+                  const rName = reactor?.name || "Someone";
+                  return (
+                    <div key={i} className="pv-nitem new">
+                      <span className="pv-nicon">{n.type==="reaction"?n.emoji:"💬"}</span>
+                      <div>
+                        {n.type==="reaction"
+                          ? <div className="pv-ntext"><b>{rName}</b> reacted {n.emoji} to your Proverbs {n.ch} verse</div>
+                          : <div className="pv-ntext"><b>{n.byName}</b> commented: "{n.text.length>60?n.text.slice(0,60)+"…":n.text}"</div>
+                        }
+                        <div className="pv-nch">Proverbs {n.ch}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+                <button className="pv-nmark" onClick={()=>{
+                  localStorage.setItem("notif-seen-"+me.id, Date.now());
+                  setNotifications([]);
+                  setShowNotifs(false);
+                }}>Mark all as read</button>
+              </>
+          }
+        </div>
+      )}
       {participants.length > 0 && (
         <div className="pv-people">
           <span className="pv-lead">Tap a name to read their page · tap yours to write</span>
