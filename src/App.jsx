@@ -58,82 +58,134 @@ async function downloadPDF(me, entries) {
   }
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit: "mm", format: "a4" });
-  const W = 210, margin = 20, cW = W - margin * 2;
-  const gold = [176,131,63], ink = [44,36,23], soft = [123,108,80], light = [243,234,211];
+  const W = 210, L = 25, R = 25, T = 28, cW = W - L - R;
+  const ink = [30,24,14], soft = [100,88,65], gold = [160,115,50], rule = [210,195,160];
   const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
   const dateStr = `${months[new Date().getMonth()]} ${new Date().getFullYear()}`;
+  const completed = Object.keys(entries).filter(c=>entries[c]?.verse?.trim()||entries[c]?.meaning?.trim()).length;
 
-  // Cover page
-  doc.setFillColor(...light); doc.rect(0,0,210,297,"F");
-  doc.setFillColor(...gold); doc.rect(0,0,210,8,"F"); doc.rect(0,289,210,8,"F");
-  doc.setTextColor(...gold); doc.setFontSize(10); doc.setFont("helvetica","bold");
-  doc.text("A 31-DAY READING · JULY", W/2, 60, {align:"center"});
-  doc.setTextColor(...ink); doc.setFontSize(42); doc.setFont("helvetica","bold");
-  doc.text("Proverbs", W/2, 90, {align:"center"});
-  doc.setFontSize(28); doc.setFont("helvetica","normal");
-  doc.text("Challenge", W/2, 106, {align:"center"});
-  doc.setDrawColor(...gold); doc.setLineWidth(0.5); doc.line(W/2-20,114,W/2+20,114);
-  doc.setFontSize(16); doc.setFont("helvetica","bold"); doc.setTextColor(...ink);
-  doc.text("31-Day Devotional", W/2, 128, {align:"center"});
-  doc.setFontSize(13); doc.setFont("helvetica","normal"); doc.setTextColor(...soft);
-  doc.text(me.name, W/2, 142, {align:"center"});
-  doc.text(dateStr, W/2, 151, {align:"center"});
-  doc.setFontSize(10); doc.setFont("helvetica","italic"); doc.setTextColor(...soft);
-  doc.text('"The fear of the Lord is the beginning of wisdom."', W/2, 200, {align:"center"});
-  doc.text("— Proverbs 9:10", W/2, 208, {align:"center"});
-  doc.setFontSize(9); doc.setTextColor(...gold);
-  doc.text("REMNANTX · Created by Vincent Nyathi", W/2, 270, {align:"center"});
+  // ── Cover ──────────────────────────────────────────────────────────────────
+  doc.setFillColor(252,248,238); doc.rect(0,0,W,297,"F");
+  // Left binding line
+  doc.setDrawColor(...gold); doc.setLineWidth(0.4);
+  doc.line(18,0,18,297);
+  doc.setFillColor(...gold); doc.rect(0,0,18,297,"F");
 
-  // One page per day
+  doc.setTextColor(...ink);
+  doc.setFontSize(9); doc.setFont("helvetica","normal");
+  doc.setTextColor(...soft);
+  doc.text("PERSONAL DEVOTIONAL JOURNAL", L+2, 44, {align:"left"});
+
+  doc.setFontSize(36); doc.setFont("helvetica","bold"); doc.setTextColor(...ink);
+  doc.text("Proverbs", L+2, 78);
+  doc.setFontSize(22); doc.setFont("helvetica","normal"); doc.setTextColor(...gold);
+  doc.text("A 31-Day Journey Through Wisdom", L+2, 90);
+
+  doc.setDrawColor(...rule); doc.setLineWidth(0.5);
+  doc.line(L+2, 97, L+2+120, 97);
+
+  doc.setFontSize(14); doc.setFont("helvetica","bold"); doc.setTextColor(...ink);
+  doc.text(me.name, L+2, 112);
+  doc.setFontSize(10); doc.setFont("helvetica","normal"); doc.setTextColor(...soft);
+  doc.text(dateStr, L+2, 121);
+  doc.text(`${completed} of 31 chapters completed`, L+2, 130);
+
+  // Open Bible icon area
+  doc.setFontSize(52); doc.text("📖", W/2, 185, {align:"center"});
+
+  doc.setFontSize(11); doc.setFont("helvetica","italic"); doc.setTextColor(...soft);
+  const coverVerse = doc.splitTextToSize('"The fear of the Lord is the beginning of wisdom,\nand knowledge of the Holy One is understanding."', cW);
+  doc.text(coverVerse, L+2, 215);
+  doc.setFontSize(10); doc.setFont("helvetica","normal");
+  doc.text("— Proverbs 9:10", L+2, 232);
+
+  // ── Journal pages ──────────────────────────────────────────────────────────
   THEMES.forEach((theme, idx) => {
     const ch = idx + 1, e = entries[ch] || {};
     const verse = e.verse?.trim() || "", meaning = e.meaning?.trim() || "";
     doc.addPage();
-    doc.setFillColor(...light); doc.rect(0,0,210,297,"F");
-    let y = margin;
-    doc.setFillColor(...gold); doc.rect(margin,y,cW,12,"F");
-    doc.setTextColor(255,255,255); doc.setFontSize(11); doc.setFont("helvetica","bold");
-    doc.text(`DAY ${ch}  ·  PROVERBS ${ch}`, margin+4, y+8); y += 18;
-    doc.setTextColor(...soft); doc.setFontSize(11); doc.setFont("helvetica","italic");
+
+    // Page background
+    doc.setFillColor(252,248,238); doc.rect(0,0,W,297,"F");
+    // Binding
+    doc.setFillColor(...gold); doc.rect(0,0,18,297,"F");
+    doc.setDrawColor(...gold); doc.setLineWidth(0.4); doc.line(18,0,18,297);
+
+    // Ruled lines background
+    for (let ly = 100; ly < 270; ly += 8) {
+      doc.setDrawColor(230,220,200); doc.setLineWidth(0.2);
+      doc.line(L+2, ly, W-R, ly);
+    }
+
+    let y = T;
+
+    // Day number — top right corner
+    doc.setFontSize(9); doc.setFont("helvetica","normal"); doc.setTextColor(...soft);
+    doc.text(`Day ${ch} of 31`, W-R, y, {align:"right"});
+
+    // Chapter title
+    doc.setFontSize(20); doc.setFont("helvetica","bold"); doc.setTextColor(...ink);
+    doc.text(`Proverbs ${ch}`, L+2, y+2);
+    y += 10;
+
+    // Theme
+    doc.setFontSize(10); doc.setFont("helvetica","italic"); doc.setTextColor(...gold);
     const tl = doc.splitTextToSize(theme, cW);
-    doc.text(tl, margin, y); y += tl.length * 6 + 6;
-    doc.setDrawColor(...gold); doc.setLineWidth(0.3); doc.line(margin,y,margin+cW,y); y += 8;
-    doc.setTextColor(...gold); doc.setFontSize(8); doc.setFont("helvetica","bold");
-    doc.text("MY FAVOURITE VERSE", margin, y); y += 6;
+    doc.text(tl, L+2, y); y += tl.length * 5.5 + 4;
+
+    // Divider
+    doc.setDrawColor(...rule); doc.setLineWidth(0.4);
+    doc.line(L+2, y, W-R, y); y += 8;
+
+    // Favourite Verse section
+    doc.setFontSize(7.5); doc.setFont("helvetica","bold"); doc.setTextColor(...gold);
+    doc.text("FAVOURITE VERSE", L+2, y);
+    y += 5;
+
     if (verse) {
-      doc.setFillColor(239,228,200);
-      const vl = doc.splitTextToSize(`"${verse}"`, cW-10);
-      const bh = vl.length * 7 + 10;
-      doc.rect(margin,y,cW,bh,"F");
-      doc.setDrawColor(...gold); doc.setLineWidth(1); doc.line(margin,y,margin,y+bh); doc.setLineWidth(0.3);
-      doc.setTextColor(...ink); doc.setFontSize(12); doc.setFont("helvetica","italic");
-      doc.text(vl, margin+6, y+7); y += bh + 8;
+      doc.setFontSize(12); doc.setFont("helvetica","italic"); doc.setTextColor(...ink);
+      const vl = doc.splitTextToSize(`"${verse}"`, cW);
+      doc.text(vl, L+2, y);
+      y += vl.length * 6.5 + 6;
     } else {
-      doc.setTextColor(188,174,142); doc.setFontSize(11); doc.setFont("helvetica","italic");
-      doc.text("Not yet completed.", margin, y); y += 10;
+      // Empty lined space for handwriting
+      for (let i = 0; i < 3; i++) {
+        doc.setDrawColor(200,188,165); doc.setLineWidth(0.3);
+        doc.line(L+2, y + i*8, W-R, y + i*8);
+      }
+      y += 30;
     }
-    doc.setTextColor(...gold); doc.setFontSize(8); doc.setFont("helvetica","bold");
-    doc.text("MY REFLECTION", margin, y); y += 6;
+
+    // Reflection section
+    doc.setFontSize(7.5); doc.setFont("helvetica","bold"); doc.setTextColor(...gold);
+    doc.text("WHAT THIS MEANS TO ME", L+2, y); y += 5;
+
     if (meaning) {
+      doc.setFontSize(11); doc.setFont("helvetica","normal"); doc.setTextColor(...ink);
       const ml = doc.splitTextToSize(meaning, cW);
-      doc.setTextColor(...ink); doc.setFontSize(11); doc.setFont("helvetica","normal");
-      doc.text(ml, margin, y); y += ml.length * 6 + 8;
+      doc.text(ml, L+2, y);
+      y += ml.length * 6 + 8;
     } else {
-      doc.setTextColor(188,174,142); doc.setFontSize(11); doc.setFont("helvetica","italic");
-      doc.text("No reflection written yet.", margin, y); y += 10;
+      for (let i = 0; i < 5; i++) {
+        doc.setDrawColor(200,188,165); doc.setLineWidth(0.3);
+        doc.line(L+2, y + i*8, W-R, y + i*8);
+      }
+      y += 48;
     }
-    y += 4;
-    doc.setFillColor(246,237,214);
-    const pl = doc.splitTextToSize(`Lord, help me live out the wisdom of Proverbs ${ch} today. Amen.`, cW-8);
-    const ph = pl.length * 5.5 + 10;
-    doc.rect(margin,y,cW,ph,"F");
-    doc.setTextColor(...soft); doc.setFontSize(10); doc.setFont("helvetica","italic");
-    doc.text(pl, margin+4, y+7);
-    doc.setTextColor(188,174,142); doc.setFontSize(8); doc.setFont("helvetica","normal");
-    doc.text(`${me.name} · Proverbs Challenge · RemnantX`, W/2, 290, {align:"center"});
+
+    // Prayer section
+    doc.setFontSize(7.5); doc.setFont("helvetica","bold"); doc.setTextColor(...gold);
+    doc.text("PRAYER", L+2, y); y += 5;
+    doc.setFontSize(10); doc.setFont("helvetica","italic"); doc.setTextColor(...soft);
+    const prayer = doc.splitTextToSize(`Lord, open my heart to the wisdom of Proverbs ${ch} today. Let your Word take root and bear fruit in my life. Amen.`, cW);
+    doc.text(prayer, L+2, y); y += prayer.length * 5.5 + 6;
+
+    // Page number footer
+    doc.setFontSize(8); doc.setFont("helvetica","normal"); doc.setTextColor(...soft);
+    doc.text(`${ch}`, W/2, 289, {align:"center"});
   });
 
-  doc.save(`${me.name.replace(/\s+/g,"-")}-Proverbs-Devotional.pdf`);
+  doc.save(`${me.name.replace(/\s+/g,"-")}-Proverbs-Journal.pdf`);
 }
 
 // ── Audio Player ──────────────────────────────────────────────────────────────
