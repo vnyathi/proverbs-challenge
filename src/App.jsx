@@ -46,7 +46,7 @@ function todayChapter() {
   return d.getMonth() === 6 ? d.getDate() : null;
 }
 
-// ── PDF Download ──────────────────────────────────────────────────────────────
+// ── PDF ───────────────────────────────────────────────────────────────────────
 async function downloadPDF(me, entries) {
   if (!window.jspdf) {
     await new Promise((res, rej) => {
@@ -57,138 +57,77 @@ async function downloadPDF(me, entries) {
     });
   }
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ unit: "mm", format: "a4" });
-  const W = 210, L = 25, R = 25, T = 28, cW = W - L - R;
-  const ink = [30,24,14], soft = [100,88,65], gold = [160,115,50], rule = [210,195,160];
-  const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-  const dateStr = `${months[new Date().getMonth()]} ${new Date().getFullYear()}`;
-  const completed = Object.keys(entries).filter(c=>entries[c]?.verse?.trim()||entries[c]?.meaning?.trim()).length;
+  const doc = new jsPDF({ unit:"mm", format:"a4" });
+  const W=210,L=25,R=25,T=28,cW=W-L-R;
+  const ink=[30,24,14],soft=[100,88,65],gold=[160,115,50];
+  const months=["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const dateStr=`${months[new Date().getMonth()]} ${new Date().getFullYear()}`;
+  const completed=Object.keys(entries).filter(c=>entries[c]?.verse?.trim()||entries[c]?.meaning?.trim()).length;
 
-  // ── Cover ──────────────────────────────────────────────────────────────────
   doc.setFillColor(252,248,238); doc.rect(0,0,W,297,"F");
-  // Left binding line
-  doc.setDrawColor(...gold); doc.setLineWidth(0.4);
-  doc.line(18,0,18,297);
   doc.setFillColor(...gold); doc.rect(0,0,18,297,"F");
-
-  doc.setTextColor(...ink);
-  doc.setFontSize(9); doc.setFont("helvetica","normal");
-  doc.setTextColor(...soft);
-  doc.text("PERSONAL DEVOTIONAL JOURNAL", L+2, 44, {align:"left"});
-
+  doc.setTextColor(...soft); doc.setFontSize(9); doc.setFont("helvetica","normal");
+  doc.text("PERSONAL DEVOTIONAL JOURNAL",L+2,44);
   doc.setFontSize(36); doc.setFont("helvetica","bold"); doc.setTextColor(...ink);
-  doc.text("Proverbs", L+2, 78);
+  doc.text("Proverbs",L+2,78);
   doc.setFontSize(22); doc.setFont("helvetica","normal"); doc.setTextColor(...gold);
-  doc.text("A 31-Day Journey Through Wisdom", L+2, 90);
-
-  doc.setDrawColor(...rule); doc.setLineWidth(0.5);
-  doc.line(L+2, 97, L+2+120, 97);
-
+  doc.text("A 31-Day Journey Through Wisdom",L+2,90);
+  doc.setDrawColor(210,195,160); doc.setLineWidth(0.5); doc.line(L+2,97,L+122,97);
   doc.setFontSize(14); doc.setFont("helvetica","bold"); doc.setTextColor(...ink);
-  doc.text(me.name, L+2, 112);
+  doc.text(me.name,L+2,112);
   doc.setFontSize(10); doc.setFont("helvetica","normal"); doc.setTextColor(...soft);
-  doc.text(dateStr, L+2, 121);
-  doc.text(`${completed} of 31 chapters completed`, L+2, 130);
-
-  // Open Bible icon area
-  doc.setFontSize(52); doc.text("📖", W/2, 185, {align:"center"});
-
+  doc.text(dateStr,L+2,121);
+  doc.text(`${completed} of 31 chapters completed`,L+2,130);
   doc.setFontSize(11); doc.setFont("helvetica","italic"); doc.setTextColor(...soft);
-  const coverVerse = doc.splitTextToSize('"The fear of the Lord is the beginning of wisdom,\nand knowledge of the Holy One is understanding."', cW);
-  doc.text(coverVerse, L+2, 215);
-  doc.setFontSize(10); doc.setFont("helvetica","normal");
-  doc.text("— Proverbs 9:10", L+2, 232);
+  const cv=doc.splitTextToSize('"The fear of the Lord is the beginning of wisdom."',cW);
+  doc.text(cv,L+2,215);
+  doc.text("— Proverbs 9:10",L+2,225);
 
-  // ── Journal pages ──────────────────────────────────────────────────────────
-  THEMES.forEach((theme, idx) => {
-    const ch = idx + 1, e = entries[ch] || {};
-    const verse = e.verse?.trim() || "", meaning = e.meaning?.trim() || "";
+  THEMES.forEach((theme,idx)=>{
+    const ch=idx+1,e=entries[ch]||{};
+    const verse=e.verse?.trim()||"",meaning=e.meaning?.trim()||"";
     doc.addPage();
-
-    // Page background
     doc.setFillColor(252,248,238); doc.rect(0,0,W,297,"F");
-    // Binding
     doc.setFillColor(...gold); doc.rect(0,0,18,297,"F");
-    doc.setDrawColor(...gold); doc.setLineWidth(0.4); doc.line(18,0,18,297);
-
-    // Ruled lines background
-    for (let ly = 100; ly < 270; ly += 8) {
-      doc.setDrawColor(230,220,200); doc.setLineWidth(0.2);
-      doc.line(L+2, ly, W-R, ly);
-    }
-
-    let y = T;
-
-    // Day number — top right corner
+    for(let ly=100;ly<270;ly+=8){doc.setDrawColor(230,220,200);doc.setLineWidth(0.2);doc.line(L+2,ly,W-R,ly);}
+    let y=T;
     doc.setFontSize(9); doc.setFont("helvetica","normal"); doc.setTextColor(...soft);
-    doc.text(`Day ${ch} of 31`, W-R, y, {align:"right"});
-
-    // Chapter title
+    doc.text(`Day ${ch} of 31`,W-R,y,{align:"right"});
     doc.setFontSize(20); doc.setFont("helvetica","bold"); doc.setTextColor(...ink);
-    doc.text(`Proverbs ${ch}`, L+2, y+2);
-    y += 10;
-
-    // Theme
+    doc.text(`Proverbs ${ch}`,L+2,y+2); y+=10;
     doc.setFontSize(10); doc.setFont("helvetica","italic"); doc.setTextColor(...gold);
-    const tl = doc.splitTextToSize(theme, cW);
-    doc.text(tl, L+2, y); y += tl.length * 5.5 + 4;
-
-    // Divider
-    doc.setDrawColor(...rule); doc.setLineWidth(0.4);
-    doc.line(L+2, y, W-R, y); y += 8;
-
-    // Favourite Verse section
+    const tl=doc.splitTextToSize(theme,cW); doc.text(tl,L+2,y); y+=tl.length*5.5+4;
+    doc.setDrawColor(210,195,160); doc.setLineWidth(0.4); doc.line(L+2,y,W-R,y); y+=8;
     doc.setFontSize(7.5); doc.setFont("helvetica","bold"); doc.setTextColor(...gold);
-    doc.text("FAVOURITE VERSE", L+2, y);
-    y += 5;
-
-    if (verse) {
+    doc.text("FAVOURITE VERSE",L+2,y); y+=5;
+    if(verse){
       doc.setFontSize(12); doc.setFont("helvetica","italic"); doc.setTextColor(...ink);
-      const vl = doc.splitTextToSize(`"${verse}"`, cW);
-      doc.text(vl, L+2, y);
-      y += vl.length * 6.5 + 6;
-    } else {
-      // Empty lined space for handwriting
-      for (let i = 0; i < 3; i++) {
-        doc.setDrawColor(200,188,165); doc.setLineWidth(0.3);
-        doc.line(L+2, y + i*8, W-R, y + i*8);
-      }
-      y += 30;
+      const vl=doc.splitTextToSize(`"${verse}"`,cW); doc.text(vl,L+2,y); y+=vl.length*6.5+6;
+    }else{
+      for(let i=0;i<3;i++){doc.setDrawColor(200,188,165);doc.setLineWidth(0.3);doc.line(L+2,y+i*8,W-R,y+i*8);}
+      y+=30;
     }
-
-    // Reflection section
     doc.setFontSize(7.5); doc.setFont("helvetica","bold"); doc.setTextColor(...gold);
-    doc.text("WHAT THIS MEANS TO ME", L+2, y); y += 5;
-
-    if (meaning) {
+    doc.text("WHAT THIS MEANS TO ME",L+2,y); y+=5;
+    if(meaning){
       doc.setFontSize(11); doc.setFont("helvetica","normal"); doc.setTextColor(...ink);
-      const ml = doc.splitTextToSize(meaning, cW);
-      doc.text(ml, L+2, y);
-      y += ml.length * 6 + 8;
-    } else {
-      for (let i = 0; i < 5; i++) {
-        doc.setDrawColor(200,188,165); doc.setLineWidth(0.3);
-        doc.line(L+2, y + i*8, W-R, y + i*8);
-      }
-      y += 48;
+      const ml=doc.splitTextToSize(meaning,cW); doc.text(ml,L+2,y); y+=ml.length*6+8;
+    }else{
+      for(let i=0;i<5;i++){doc.setDrawColor(200,188,165);doc.setLineWidth(0.3);doc.line(L+2,y+i*8,W-R,y+i*8);}
+      y+=48;
     }
-
-    // Prayer section
     doc.setFontSize(7.5); doc.setFont("helvetica","bold"); doc.setTextColor(...gold);
-    doc.text("PRAYER", L+2, y); y += 5;
+    doc.text("PRAYER",L+2,y); y+=5;
     doc.setFontSize(10); doc.setFont("helvetica","italic"); doc.setTextColor(...soft);
-    const prayer = doc.splitTextToSize(`Lord, open my heart to the wisdom of Proverbs ${ch} today. Let your Word take root and bear fruit in my life. Amen.`, cW);
-    doc.text(prayer, L+2, y); y += prayer.length * 5.5 + 6;
-
-    // Page number footer
+    const pl=doc.splitTextToSize(`Lord, open my heart to the wisdom of Proverbs ${ch} today. Amen.`,cW);
+    doc.text(pl,L+2,y);
     doc.setFontSize(8); doc.setFont("helvetica","normal"); doc.setTextColor(...soft);
-    doc.text(`${ch}`, W/2, 289, {align:"center"});
+    doc.text(`${ch}`,W/2,289,{align:"center"});
   });
-
   doc.save(`${me.name.replace(/\s+/g,"-")}-Proverbs-Journal.pdf`);
 }
 
-// ── Audio Player ──────────────────────────────────────────────────────────────
+// ── Audio ─────────────────────────────────────────────────────────────────────
 function AudioPlayer({ chapter }) {
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -204,7 +143,7 @@ function AudioPlayer({ chapter }) {
         onLoadedMetadata={e=>setDuration(e.target.duration)}
         onEnded={()=>setPlaying(false)}/>
       <button className="pv-playbtn" onClick={()=>{
-        const a=audioRef.current;if(!a)return;
+        const a=audioRef.current; if(!a) return;
         if(playing){a.pause();setPlaying(false);}
         else a.play().then(()=>setPlaying(true)).catch(()=>{});
       }}>{playing?"⏸":"▶"}</button>
@@ -252,7 +191,41 @@ function BibleReader({ chapter, onUseVerse }) {
   );
 }
 
-// ── Main App ──────────────────────────────────────────────────────────────────
+// ── Notification bell ─────────────────────────────────────────────────────────
+function NotifPanel({ notifs, participants, me, onClose, onMarkRead }) {
+  return (
+    <div className="pv-notifs">
+      <div className="pv-nhead">
+        <span className="pv-ntitle">🔔 Notifications</span>
+        <button className="pv-nclose" onClick={onClose}>✕</button>
+      </div>
+      {notifs.length === 0
+        ? <div className="pv-nempty">No new notifications yet.<br/>When friends react or comment on your verses, they'll appear here.</div>
+        : <>
+            {notifs.map((n,i) => {
+              const reactor = participants.find(p=>p.id===n.uid);
+              const rName = reactor?.name || "Someone";
+              return (
+                <div key={i} className="pv-nitem">
+                  <span className="pv-nicon">{n.type==="reaction"?n.emoji:"💬"}</span>
+                  <div>
+                    {n.type==="reaction"
+                      ? <div className="pv-ntext"><b>{rName}</b> reacted {n.emoji} to your Proverbs {n.ch} verse</div>
+                      : <div className="pv-ntext"><b>{n.byName}</b> commented: "{n.text.length>60?n.text.slice(0,60)+"…":n.text}"</div>
+                    }
+                    <div className="pv-nch">Proverbs {n.ch}</div>
+                  </div>
+                </div>
+              );
+            })}
+            <button className="pv-nmark" onClick={onMarkRead}>Mark all as read</button>
+          </>
+      }
+    </div>
+  );
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
 export default function ProverbsChallenge() {
   const [me, setMe] = useState(null);
   const [nameInput, setNameInput] = useState("");
@@ -288,7 +261,9 @@ export default function ProverbsChallenge() {
       const listing = await store.list("user:", true);
       const keys = (listing&&listing.keys)||[];
       const out = [];
-      for (const k of keys) { try { const r=await store.get(k,true); if(r&&r.value) out.push(JSON.parse(r.value)); } catch(e){} }
+      for (const k of keys) {
+        try { const r=await store.get(k,true); if(r&&r.value) out.push(JSON.parse(r.value)); } catch(e){}
+      }
       out.sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
       setParticipants(out);
     } catch(e) { setParticipants([]); }
@@ -299,78 +274,61 @@ export default function ProverbsChallenge() {
       const listing = await store.list("social:", true);
       const keys = (listing&&listing.keys)||[];
       const map = {};
-      for (const k of keys) { try { const r=await store.get(k,true); if(r&&r.value) map[k.slice("social:".length)]=JSON.parse(r.value); } catch(e){} }
+      for (const k of keys) {
+        try { const r=await store.get(k,true); if(r&&r.value) map[k.slice("social:".length)]=JSON.parse(r.value); } catch(e){}
+      }
       setSocial(map);
     } catch(e) { setSocial({}); }
   }, []);
 
-  const loadNotifications = useCallback(async (currentMe, currentEntries) => {
+  const loadNotifications = useCallback(async (currentMe) => {
     if (!currentMe) return;
     try {
-      const lastSeen = +(localStorage.getItem("notif-seen-" + currentMe.id) || 0);
-      const listing = await store.list("social:", true);
-      const keys = (listing && listing.keys) || [];
-      const notifs = [];
-      for (const k of keys) {
-        // key format: "social:userId:chapter" — only care about keys matching me
-        const parts = k.replace("social:","").split(":");
-        if (parts.length < 2) continue;
-        const authorId = parts[0], ch = +parts[1];
-        if (authorId !== currentMe.id) continue;
-        try {
-          const r = await store.get(k, true);
-          if (!r || !r.value) continue;
-          const data = JSON.parse(r.value);
-          // New reactions
-          Object.entries(data.reactions || {}).forEach(([emoji, ids]) => {
-            (ids || []).forEach(uid => {
-              if (uid === currentMe.id) return;
-              // Find reactor name
-              notifs.push({ type:"reaction", emoji, uid, ch, ts: lastSeen + 1 });
-            });
-          });
-          // New comments
-          (data.comments || []).forEach(c => {
-            if (c.byId === currentMe.id) return;
-            if (c.ts > lastSeen) {
-              notifs.push({ type:"comment", byName: c.byName, text: c.text, ch, ts: c.ts });
-            }
-          });
-        } catch(e) {}
-      }
-      // For reactions we can't know exact time so we track by count change
-      // Store reaction snapshot and diff
       const snapKey = "rx-snap-" + currentMe.id;
       const prevSnap = JSON.parse(localStorage.getItem(snapKey) || "{}");
-      const newRxNotifs = [];
+      const lastSeen = +(localStorage.getItem("notif-seen-" + currentMe.id) || 0);
+      const listing = await store.list("social:", true);
+      const keys = (listing&&listing.keys)||[];
+      const notifs = [];
+      const newSnap = {...prevSnap};
+
       for (const k of keys) {
-        const parts = k.replace("social:","").split(":");
-        if (parts.length < 2) continue;
-        const authorId = parts[0], ch = +parts[1];
-        if (authorId !== currentMe.id) continue;
         try {
+          const parts = k.replace("social:","").split(":");
+          if (parts.length < 2) continue;
+          const authorId = parts[0], ch = +parts[1];
+          if (authorId !== currentMe.id) continue;
           const r = await store.get(k, true);
           if (!r || !r.value) continue;
           const data = JSON.parse(r.value);
-          const snapK = ch + "";
-          const prev = prevSnap[snapK] || {};
+          const snapK = String(ch);
+          const prevRx = prevSnap[snapK] || {};
+
+          // Reactions diff
           Object.entries(data.reactions || {}).forEach(([emoji, ids]) => {
-            const prevIds = prev[emoji] || [];
-            const newReactors = (ids || []).filter(id => id !== currentMe.id && !prevIds.includes(id));
-            newReactors.forEach(uid => {
-              newRxNotifs.push({ type:"reaction", emoji, uid, ch, ts: Date.now() });
+            const prevIds = prevRx[emoji] || [];
+            (ids||[]).filter(id => id !== currentMe.id && !prevIds.includes(id)).forEach(uid => {
+              notifs.push({ type:"reaction", emoji, uid, ch, ts: Date.now() });
             });
           });
-          prevSnap[snapK] = data.reactions || {};
-        } catch(e) {}
+          newSnap[snapK] = data.reactions || {};
+
+          // Comments since last seen
+          (data.comments||[]).forEach(c => {
+            if (c.byId === currentMe.id) return;
+            if (c.ts > lastSeen) notifs.push({ type:"comment", byName:c.byName, text:c.text, ch, ts:c.ts });
+          });
+        } catch(e){}
       }
-      localStorage.setItem(snapKey, JSON.stringify(prevSnap));
-      const allNotifs = [...newRxNotifs, ...notifs.filter(n => n.type === "comment")];
-      allNotifs.sort((a,b) => b.ts - a.ts);
-      setNotifications(allNotifs);
-    } catch(e) {}
+      localStorage.setItem(snapKey, JSON.stringify(newSnap));
+      notifs.sort((a,b)=>b.ts-a.ts);
+      setNotifications(notifs);
+    } catch(e){}
   }, []);
+
+  const sKey = (aid,ch) => aid+":"+ch;
   const getSocial = (aid,ch) => social[sKey(aid,ch)]||{reactions:{},comments:[]};
+
   const saveSocial = async (aid,ch,data) => {
     setSocial(s=>({...s,[sKey(aid,ch)]:data}));
     try { await store.set("social:"+aid+":"+ch,JSON.stringify(data),true); } catch(e){}
@@ -392,14 +350,16 @@ export default function ProverbsChallenge() {
 
   useEffect(() => {
     (async () => {
-      const saved = localStorage.getItem("me");
-      if (saved) {
-        const p = JSON.parse(saved); setMe(p);
-        try { const m=await store.get("user:"+p.id,true); if(m&&m.value) setMyEntries(JSON.parse(m.value).entries||{}); } catch(e){}
-      }
+      try {
+        const saved = localStorage.getItem("me");
+        if (saved) {
+          const p = JSON.parse(saved); setMe(p);
+          try { const m=await store.get("user:"+p.id,true); if(m&&m.value) setMyEntries(JSON.parse(m.value).entries||{}); } catch(e){}
+          await loadNotifications(p);
+        }
+      } catch(e){}
       await loadParticipants(); await loadSocial();
       setOpen(todayChapter()||1); setLoading(false);
-      if (me) await loadNotifications(me, myEntries);
     })();
   }, [loadParticipants, loadSocial, loadNotifications]);
 
@@ -409,11 +369,13 @@ export default function ProverbsChallenge() {
     const id=setInterval(()=>setNoteIdx(i=>i+1),5000); return ()=>clearInterval(id);
   }, [open,paused,picker]);
   useEffect(() => {
-    const id = setInterval(async () => {
+    const id=setInterval(async()=>{
       await loadParticipants(); await loadSocial();
-      if (me) await loadNotifications(me, myEntries);
-    }, 20000); return ()=>clearInterval(id);
-  }, [loadParticipants, loadSocial, loadNotifications, me, myEntries]);
+      const saved=localStorage.getItem("me");
+      if(saved) await loadNotifications(JSON.parse(saved));
+    },20000);
+    return ()=>clearInterval(id);
+  }, [loadParticipants,loadSocial,loadNotifications]);
 
   const persist = useCallback((entries,person) => {
     setSaving(true); if(saveTimer.current) clearTimeout(saveTimer.current);
@@ -432,9 +394,8 @@ export default function ProverbsChallenge() {
   const resume = async person => {
     const p={id:person.id,name:person.name,pinHash:person.pinHash};
     setMe(p); setMyEntries(person.entries||{}); setOpen(todayChapter()||1);
-    localStorage.setItem("me", JSON.stringify(p));
+    localStorage.setItem("me",JSON.stringify(p));
   };
-
   const askPin = person => { setPinFor(person); setPinInput(""); setPinError(""); };
   const confirmPin = async () => {
     const person=pinFor; if(!person) return;
@@ -443,7 +404,6 @@ export default function ProverbsChallenge() {
     if(h===person.pinHash){setPinFor(null);resume(person);}
     else{setPinError("Incorrect PIN. Try again.");setPinInput("");setPinTries(t=>t+1);}
   };
-
   const join = async () => {
     const name=nameInput.trim(); if(!name) return;
     const existing=participants.find(p=>p.name.toLowerCase()===name.toLowerCase());
@@ -454,28 +414,25 @@ export default function ProverbsChallenge() {
     const pinHash=await hashPin(id,pin);
     const person={id,name,pinHash};
     setMe(person); setMyEntries({}); setOpen(todayChapter()||1);
+    localStorage.setItem("me",JSON.stringify(person));
     try {
-      localStorage.setItem("me", JSON.stringify(person));
       await store.set("user:"+id,JSON.stringify({...person,entries:{},updatedAt:Date.now()}),true);
       loadParticipants();
     } catch(e){}
   };
-
   const update = (chapter,field,value) => {
     const next={...myEntries,[chapter]:{...myEntries[chapter],[field]:value}};
     setMyEntries(next); if(me) persist(next,me);
   };
-
   const switchReader = async () => {
     localStorage.removeItem("me");
-    setMe(null);setMyEntries({});setNameInput("");setNewPin("");setViewing(null);
+    setMe(null);setMyEntries({});setNameInput("");setNewPin("");setViewing(null);setNotifications([]);
   };
-
   const deleteMe = async () => {
     if(!me) return;
     try { await store.delete("user:"+me.id,true); } catch(e){}
     localStorage.removeItem("me");
-    setConfirmDelete(false);setMe(null);setMyEntries({});setNameInput("");setNewPin("");setViewing(null);
+    setConfirmDelete(false);setMe(null);setMyEntries({});setNameInput("");setNewPin("");setViewing(null);setNotifications([]);
     loadParticipants();
   };
 
@@ -518,12 +475,25 @@ export default function ProverbsChallenge() {
     .pv-modalcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:24px 20px;max-width:330px;width:100%;text-align:center;}
     .pv-modalcard .pv-input{text-align:center;letter-spacing:.4em;font-size:24px;}
     .pv-status{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:6px 0;flex-wrap:wrap;}
-    .pv-reader{display:flex;align-items:center;gap:9px;}
+    .pv-reader{display:flex;align-items:center;gap:9px;flex:1;}
     .pv-chip{cursor:pointer;font-size:12px;color:var(--gold-d);font-family:'Fraunces',serif;border:1px solid var(--line);border-radius:18px;padding:4px 11px;background:transparent;}
     .pv-prog{flex:1;min-width:150px;}
     .pv-ptrack{height:8px;background:var(--card2);border:1px solid var(--line);border-radius:6px;overflow:hidden;}
     .pv-pfill{height:100%;background:linear-gradient(90deg,var(--gold),var(--gold-d));transition:width .5s;}
     .pv-pnum{font-family:'Fraunces',serif;font-size:12px;color:var(--soft);margin-top:5px;display:flex;justify-content:space-between;}
+    .pv-bell{position:relative;cursor:pointer;background:none;border:none;font-size:22px;padding:2px 4px;line-height:1;flex:0 0 auto;}
+    .pv-badgecount{position:absolute;top:-3px;right:-3px;background:#e53e3e;color:#fff;border-radius:50%;width:17px;height:17px;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;}
+    .pv-notifs{position:fixed;top:0;right:0;width:min(340px,100vw);height:100vh;background:var(--card);border-left:1px solid var(--line);z-index:70;overflow-y:auto;box-shadow:-8px 0 30px rgba(44,36,23,.18);}
+    .pv-nhead{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 12px;border-bottom:1px solid var(--line);}
+    .pv-ntitle{font-family:'Fraunces',serif;font-weight:700;font-size:16px;}
+    .pv-nclose{background:none;border:none;font-size:20px;cursor:pointer;color:var(--soft);}
+    .pv-nitem{display:flex;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);align-items:flex-start;}
+    .pv-nicon{font-size:20px;flex:0 0 auto;margin-top:2px;}
+    .pv-ntext{font-size:13px;line-height:1.45;color:var(--ink);}
+    .pv-ntext b{font-family:'Fraunces',serif;font-weight:600;}
+    .pv-nch{font-size:11px;color:var(--soft);font-style:italic;margin-top:2px;}
+    .pv-nempty{text-align:center;padding:40px 20px;font-style:italic;color:var(--soft);font-size:14px;}
+    .pv-nmark{display:block;width:calc(100% - 32px);margin:12px 16px;background:var(--gold-d);color:#fff;border:none;border-radius:6px;padding:10px;font-family:'Fraunces',serif;font-size:13px;cursor:pointer;}
     .pv-av{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-family:'Fraunces',serif;font-size:12px;font-weight:600;flex:0 0 auto;}
     .pv-people{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:4px 2px 14px;}
     .pv-people .pv-lead{font-style:italic;color:var(--soft);font-size:13px;font-family:'Spectral',serif;width:100%;margin-bottom:2px;}
@@ -531,7 +501,6 @@ export default function ProverbsChallenge() {
     .pv-pill.active{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold);}
     .pv-viewbar{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#efe4c8;border:1px solid var(--gold);border-radius:10px;padding:10px 14px;margin:6px 0 12px;}
     .pv-viewbar .vt{font-family:'Fraunces',serif;font-size:14px;color:var(--gold-d);display:flex;align-items:center;gap:8px;}
-    .pv-viewbar .vt small{font-style:italic;font-family:'Spectral',serif;color:var(--soft);}
     .pv-todaybtn{display:block;width:100%;margin:0 0 14px;background:var(--gold-d);color:#fff;border:none;font-family:'Fraunces',serif;font-size:14px;padding:12px;border-radius:8px;cursor:pointer;font-weight:600;}
     .pv-hint{text-align:center;font-style:italic;color:var(--soft);font-size:13px;margin:2px 2px 14px;}
     .pv-day{background:var(--card);border:1px solid var(--line);border-radius:10px;margin-bottom:10px;overflow:hidden;}
@@ -603,20 +572,6 @@ export default function ProverbsChallenge() {
     .pv-cmtform{display:flex;gap:7px;margin-top:10px;}
     .pv-cmtin{flex:1;min-width:0;border:1px solid rgba(140,98,36,.3);border-radius:16px;padding:7px 11px;background:rgba(255,255,255,.65);font-family:'Spectral',serif;font-size:13px;color:#3a2f1c;outline:none;}
     .pv-cmtbtn{background:var(--gold-d);color:#fff;border:none;border-radius:16px;padding:0 13px;font-family:'Fraunces',serif;font-size:12px;cursor:pointer;}
-    .pv-bell{position:relative;cursor:pointer;background:none;border:none;font-size:20px;padding:2px 6px;line-height:1;}
-    .pv-badge{position:absolute;top:-2px;right:-2px;background:#e53e3e;color:#fff;border-radius:50%;width:16px;height:16px;font-size:9px;font-family:'Fraunces',serif;font-weight:700;display:flex;align-items:center;justify-content:center;}
-    .pv-notifs{position:fixed;top:0;right:0;width:min(340px,100vw);height:100vh;background:var(--card);border-left:1px solid var(--line);z-index:70;overflow-y:auto;box-shadow:-8px 0 30px rgba(44,36,23,.15);}
-    .pv-nhead{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 12px;border-bottom:1px solid var(--line);}
-    .pv-ntitle{font-family:'Fraunces',serif;font-weight:700;font-size:16px;}
-    .pv-nclose{background:none;border:none;font-size:20px;cursor:pointer;color:var(--soft);}
-    .pv-nitem{display:flex;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);align-items:flex-start;}
-    .pv-nitem.new{background:#fef9ec;}
-    .pv-nicon{font-size:20px;flex:0 0 auto;margin-top:2px;}
-    .pv-ntext{font-size:13.5px;line-height:1.45;color:var(--ink);}
-    .pv-ntext b{font-family:'Fraunces',serif;font-weight:600;}
-    .pv-nch{font-size:11px;color:var(--soft);font-style:italic;margin-top:2px;}
-    .pv-nempty{text-align:center;padding:40px 20px;font-style:italic;color:var(--soft);font-size:14px;}
-    .pv-nmark{display:block;width:calc(100% - 32px);margin:12px 16px;background:var(--gold-d);color:#fff;border:none;border-radius:6px;padding:10px;font-family:'Fraunces',serif;font-size:13px;cursor:pointer;}
     .pv-dl{display:block;width:100%;margin:24px 0 8px;background:var(--gold);color:#fff;border:none;font-family:'Fraunces',serif;font-weight:600;font-size:14px;padding:13px;border-radius:8px;cursor:pointer;letter-spacing:.04em;}
     .pv-dl:hover{background:var(--gold-d);}
     .pv-foot{text-align:center;color:var(--soft);font-style:italic;font-size:14px;margin-top:26px;}
@@ -686,6 +641,7 @@ export default function ProverbsChallenge() {
         <h1 className="pv-title"><em>Proverbs</em> Challenge</h1>
         <div className="pv-rule"/>
       </div>
+
       <div className="pv-status">
         <div className="pv-reader">
           <Avatar name={me.name} i={0}/>
@@ -697,44 +653,26 @@ export default function ProverbsChallenge() {
           <div className="pv-pnum"><span>{activeDone} of 31 chapters</span><span>{readOnly?"read only":saving?"Saving…":"Saved"}</span></div>
         </div>
         <button className="pv-bell" onClick={()=>setShowNotifs(true)}>
-          🔔{notifications.length>0&&<span className="pv-badge">{notifications.length}</span>}
+          🔔{notifications.length>0&&<span className="pv-badgecount">{notifications.length}</span>}
         </button>
       </div>
 
       {showNotifs && (
-        <div className="pv-notifs">
-          <div className="pv-nhead">
-            <span className="pv-ntitle">🔔 Notifications</span>
-            <button className="pv-nclose" onClick={()=>setShowNotifs(false)}>✕</button>
-          </div>
-          {notifications.length === 0
-            ? <div className="pv-nempty">No new notifications yet.<br/>When friends react or comment on your verses, they'll appear here.</div>
-            : <>
-                {notifications.map((n,i) => {
-                  const reactor = participants.find(p=>p.id===n.uid);
-                  const rName = reactor?.name || "Someone";
-                  return (
-                    <div key={i} className="pv-nitem new">
-                      <span className="pv-nicon">{n.type==="reaction"?n.emoji:"💬"}</span>
-                      <div>
-                        {n.type==="reaction"
-                          ? <div className="pv-ntext"><b>{rName}</b> reacted {n.emoji} to your Proverbs {n.ch} verse</div>
-                          : <div className="pv-ntext"><b>{n.byName}</b> commented: "{n.text.length>60?n.text.slice(0,60)+"…":n.text}"</div>
-                        }
-                        <div className="pv-nch">Proverbs {n.ch}</div>
-                      </div>
-                    </div>
-                  );
-                })}
-                <button className="pv-nmark" onClick={()=>{
-                  localStorage.setItem("notif-seen-"+me.id, Date.now());
-                  setNotifications([]);
-                  setShowNotifs(false);
-                }}>Mark all as read</button>
-              </>
-          }
-        </div>
+        <NotifPanel
+          notifs={notifications}
+          participants={participants}
+          me={me}
+          onClose={()=>setShowNotifs(false)}
+          onMarkRead={()=>{
+            localStorage.setItem("notif-seen-"+me.id, Date.now());
+            const snap=JSON.parse(localStorage.getItem("rx-snap-"+me.id)||"{}");
+            localStorage.setItem("rx-snap-"+me.id, JSON.stringify(snap));
+            setNotifications([]);
+            setShowNotifs(false);
+          }}
+        />
       )}
+
       {participants.length > 0 && (
         <div className="pv-people">
           <span className="pv-lead">Tap a name to read their page · tap yours to write</span>
@@ -754,10 +692,14 @@ export default function ProverbsChallenge() {
       {!readOnly && <div className="pv-hint">Tap any day to open it</div>}
 
       {THEMES.map((theme,idx)=>{
-        const chapter=idx+1,entry=activeEntries[chapter]||{};
+        const chapter=idx+1;
+        const entry = readOnly ? (viewing.entries?.[chapter]||{}) : (myEntries[chapter]||{});
         const hasEntry=entry.verse?.trim()||entry.meaning?.trim();
-        const friends=participants.filter(p=>p.id!==me.id&&p.entries&&p.entries[chapter]&&(p.entries[chapter].verse?.trim()||p.entries[chapter].meaning?.trim()));
         const isOpen=open===chapter,tab=getTab(chapter);
+        const friends = readOnly ? [] : participants.filter(p=>{
+          try { return p.id!==me.id&&p.entries&&p.entries[chapter]&&(p.entries[chapter].verse?.trim()||p.entries[chapter].meaning?.trim()); } catch(e){ return false; }
+        });
+
         return (
           <div className={"pv-day"+(tc===chapter?" today":"")} key={chapter} ref={el=>rowRefs.current[chapter]=el}>
             <button className="pv-drow" onClick={()=>{setOpen(isOpen?null:chapter);setNoteIdx(0);setCommentDraft("");setPicker(null);}}>
@@ -783,32 +725,45 @@ export default function ProverbsChallenge() {
                       <button className={"pv-tab"+(tab==="read"?" on":"")} onClick={()=>setTab(chapter,"read")}>📖 Read & Listen</button>
                       <button className={"pv-tab"+(tab==="journal"?" on":"")} onClick={()=>setTab(chapter,"journal")}>✍️ My Reflection</button>
                     </div>
-                    {tab==="read" && <BibleReader chapter={chapter} onUseVerse={v=>{update(chapter,"verse",v);setTab(chapter,"journal");}}/>}
+                    {tab==="read" && (
+                      <BibleReader chapter={chapter} onUseVerse={v=>{update(chapter,"verse",v);setTab(chapter,"journal");}}/>
+                    )}
                     {tab==="journal" && (
-                      <>
-                        <div className="pv-field"><div className="pv-flabel">My favourite verse</div>
+                      <div>
+                        <div className="pv-field">
+                          <div className="pv-flabel">My favourite verse</div>
                           <textarea className="pv-ta verse" value={entry.verse||""} placeholder="Write or paste your favourite verse…" onFocus={grow} onChange={e=>{grow(e);update(chapter,"verse",e.target.value);}}/>
                         </div>
-                        <div className="pv-field"><div className="pv-flabel">What it means to me</div>
+                        <div className="pv-field">
+                          <div className="pv-flabel">What it means to me</div>
                           <textarea className="pv-ta" value={entry.meaning||""} placeholder="Write your reflection…" onFocus={grow} onChange={e=>{grow(e);update(chapter,"meaning",e.target.value);}}/>
                         </div>
-                        {friends.length > 0 && (() => {
-                          const fi = noteIdx % friends.length;
-                          const f = friends[fi];
+                        {friends.length > 0 && (()=>{
+                          const fidx = noteIdx % friends.length;
+                          const f = friends[fidx];
                           if (!f || !f.entries || !f.entries[chapter]) return null;
                           const fe = f.entries[chapter];
-                          const participantIdx = participants.findIndex(x=>x.id===f.id);
-                          const soc=getSocial(f.id,chapter),sk=sKey(f.id,chapter);
+                          if (!fe.verse?.trim() && !fe.meaning?.trim()) return null;
+                          const fi = participants.findIndex(x=>x.id===f.id);
+                          const soc = getSocial(f.id,chapter);
+                          const sk = sKey(f.id,chapter);
                           return (
-                                                          <div className="pv-stack">
-                              <div className="pv-stackhd"><span>{friends.length} {friends.length===1?"friend shared":"friends shared"}</span>{friends.length>1&&<em>tap note for next</em>}</div>
-                              <div className="pv-sticky" style={{background:STICKY_BG[participantIdx%STICKY_BG.length],transform:`rotate(${STICKY_ANGLE[participantIdx%STICKY_ANGLE.length]}deg)`}} onClick={()=>friends.length>1&&setNoteIdx(i=>i+1)}>
+                            <div className="pv-stack">
+                              <div className="pv-stackhd">
+                                <span>{friends.length} {friends.length===1?"friend shared":"friends shared"}</span>
+                                {friends.length>1&&<em>tap note for next</em>}
+                              </div>
+                              <div className="pv-sticky"
+                                style={{background:STICKY_BG[fi%STICKY_BG.length],transform:`rotate(${STICKY_ANGLE[fi%STICKY_ANGLE.length]}deg)`}}
+                                onClick={()=>friends.length>1&&setNoteIdx(i=>i+1)}>
                                 {fe.verse?.trim()&&<div className="pv-snverse">"{fe.verse}"</div>}
                                 {fe.meaning?.trim()&&<div className="pv-snmean">{fe.meaning}</div>}
-                                <div className="pv-snwho"><Avatar name={f.name} i={participantIdx}/>{f.name}</div>
+                                <div className="pv-snwho"><Avatar name={f.name} i={fi}/>{f.name}</div>
                                 <div className="pv-rxrow" onClick={e=>e.stopPropagation()}>
                                   {Object.entries(soc.reactions||{}).filter(([,ids])=>ids&&ids.length>0).map(([em,ids])=>(
-                                    <button key={em} className={"pv-rxbubble"+(ids.includes(me.id)?" on":"")} onClick={()=>toggleReaction(f.id,chapter,em)}><span>{em}</span><b>{ids.length}</b></button>
+                                    <button key={em} className={"pv-rxbubble"+(ids.includes(me.id)?" on":"")} onClick={()=>toggleReaction(f.id,chapter,em)}>
+                                      <span>{em}</span><b>{ids.length}</b>
+                                    </button>
                                   ))}
                                   <span className="pv-picker">
                                     <button className="pv-addrx" onClick={()=>setPicker(picker===sk?null:sk)}>＋</button>
@@ -818,16 +773,24 @@ export default function ProverbsChallenge() {
                                 <div className="pv-cmts" onClick={e=>e.stopPropagation()}>
                                   {(soc.comments||[]).map(c=><div className="pv-cmt" key={c.id}><b>{c.byName}:</b> {c.text}</div>)}
                                   <div className="pv-cmtform">
-                                    <input className="pv-cmtin" value={commentDraft} placeholder={"Encourage "+f.name+"…"} onFocus={()=>setPaused(true)} onBlur={()=>setPaused(false)} onChange={e=>setCommentDraft(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){addComment(f.id,chapter,commentDraft);setCommentDraft("");}}}/>
+                                    <input className="pv-cmtin" value={commentDraft}
+                                      placeholder={"Encourage "+f.name+"…"}
+                                      onFocus={()=>setPaused(true)} onBlur={()=>setPaused(false)}
+                                      onChange={e=>setCommentDraft(e.target.value)}
+                                      onKeyDown={e=>{if(e.key==="Enter"){addComment(f.id,chapter,commentDraft);setCommentDraft("");}}}/>
                                     <button className="pv-cmtbtn" onClick={()=>{addComment(f.id,chapter,commentDraft);setCommentDraft("");}}>Send</button>
                                   </div>
                                 </div>
-                                {friends.length>1&&<div className="pv-dots" onClick={e=>e.stopPropagation()}>{friends.map((_,di)=><button key={di} className={"pv-dotn"+((noteIdx%friends.length)===di?" on":"")} onClick={()=>setNoteIdx(di)}/>)}</div>}
+                                {friends.length>1&&(
+                                  <div className="pv-dots" onClick={e=>e.stopPropagation()}>
+                                    {friends.map((_,di)=><button key={di} className={"pv-dotn"+((noteIdx%friends.length)===di?" on":"")} onClick={()=>setNoteIdx(di)}/>)}
+                                  </div>
+                                )}
                               </div>
                             </div>
                           );
                         })()}
-                      </>
+                      </div>
                     )}
                   </>
                 )}
@@ -842,6 +805,7 @@ export default function ProverbsChallenge() {
       <p className="pv-credit">Created by Vincent Nyathi</p>
       {!readOnly && <button className="pv-leave" onClick={()=>setConfirmDelete(true)}>leave the challenge</button>}
     </div>
+
     {confirmDelete && (
       <div className="pv-modal" onClick={e=>{if(e.target===e.currentTarget)setConfirmDelete(false);}}>
         <div className="pv-modalcard">
