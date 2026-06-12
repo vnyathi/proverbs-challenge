@@ -793,15 +793,19 @@ export default function ProverbsChallenge() {
                           <textarea className="pv-ta" value={entry.meaning||""} placeholder="Write your reflection…" onFocus={grow} onChange={e=>{grow(e);update(chapter,"meaning",e.target.value);}}/>
                         </div>
                         {friends.length > 0 && (() => {
-                          const f=friends[noteIdx%friends.length],fi=participants.findIndex(x=>x.id===f.id);
-                          const fe=f.entries[chapter],soc=getSocial(f.id,chapter),sk=sKey(f.id,chapter);
+                          const fi = noteIdx % friends.length;
+                          const f = friends[fi];
+                          if (!f || !f.entries || !f.entries[chapter]) return null;
+                          const fe = f.entries[chapter];
+                          const participantIdx = participants.findIndex(x=>x.id===f.id);
+                          const soc=getSocial(f.id,chapter),sk=sKey(f.id,chapter);
                           return (
-                            <div className="pv-stack">
+                                                          <div className="pv-stack">
                               <div className="pv-stackhd"><span>{friends.length} {friends.length===1?"friend shared":"friends shared"}</span>{friends.length>1&&<em>tap note for next</em>}</div>
-                              <div className="pv-sticky" style={{background:STICKY_BG[fi%STICKY_BG.length],transform:`rotate(${STICKY_ANGLE[fi%STICKY_ANGLE.length]}deg)`}} onClick={()=>friends.length>1&&setNoteIdx(i=>i+1)}>
+                              <div className="pv-sticky" style={{background:STICKY_BG[participantIdx%STICKY_BG.length],transform:`rotate(${STICKY_ANGLE[participantIdx%STICKY_ANGLE.length]}deg)`}} onClick={()=>friends.length>1&&setNoteIdx(i=>i+1)}>
                                 {fe.verse?.trim()&&<div className="pv-snverse">"{fe.verse}"</div>}
                                 {fe.meaning?.trim()&&<div className="pv-snmean">{fe.meaning}</div>}
-                                <div className="pv-snwho"><Avatar name={f.name} i={fi}/>{f.name}</div>
+                                <div className="pv-snwho"><Avatar name={f.name} i={participantIdx}/>{f.name}</div>
                                 <div className="pv-rxrow" onClick={e=>e.stopPropagation()}>
                                   {Object.entries(soc.reactions||{}).filter(([,ids])=>ids&&ids.length>0).map(([em,ids])=>(
                                     <button key={em} className={"pv-rxbubble"+(ids.includes(me.id)?" on":"")} onClick={()=>toggleReaction(f.id,chapter,em)}><span>{em}</span><b>{ids.length}</b></button>
