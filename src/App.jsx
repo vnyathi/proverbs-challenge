@@ -228,10 +228,10 @@ function CommentsThread({soc, me, onReact, onComment, onReply, onReactToComment,
                 <div className="pv-threadwho">
                   <b>{c.byName}</b>
                   {c.replyTo&&<span className="pv-replytag">↩ reply</span>}
-                  {(isMine||isAdmin)&&(
+                  {(isMine || isAdmin) && (
                     <span className="pv-cmt-actions">
-                      {isMine&&<button className="pv-cmtaction" onClick={()=>startEdit(c)}>✏️</button>}
-                      {canDelete&&<button className="pv-cmtaction del" onClick={()=>onDeleteComment(c.id)}>🗑️</button>}
+                      {isMine && <button className="pv-cmtaction" onClick={()=>startEdit(c)}>✏️</button>}
+                      <button className="pv-cmtaction del" onClick={()=>onDeleteComment(c.id)}>🗑️</button>
                     </span>
                   )}
                 </div>
@@ -930,7 +930,7 @@ export default function ProverbsChallenge() {
                           <CommentsThread
                             soc={mySoc}
                             me={me}
-                            isAdmin={me.name===ADMIN_NAME}
+                            isAdmin={isAdminUser(me)}
                             onReact={(emoji)=>toggleReaction(me.id,chapter,emoji)}
                             onComment={(text)=>addComment(me.id,chapter,text)}
                             onReply={(replyTo,text)=>addComment(me.id,chapter,text,replyTo)}
