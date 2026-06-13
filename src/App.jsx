@@ -190,9 +190,10 @@ function BibleReader({chapter, onUseVerse}) {
 }
 
 // ── Comments Thread (on my own entry) ────────────────────────────────────────
-function CommentsThread({soc, me, onReact, onComment, onReply}) {
+function CommentsThread({soc, me, onReact, onComment, onReply, onReactToComment}) {
   const [draft, setDraft] = useState("");
   const [replyTo, setReplyTo] = useState(null);
+  const [commentPicker, setCommentPicker] = useState(null); // comment id whose picker is open
 
   const handleSend = () => {
     if (!draft.trim()) return;
@@ -206,7 +207,7 @@ function CommentsThread({soc, me, onReact, onComment, onReply}) {
       {/* Reactions on my entry */}
       <div className="pv-myreactions">
         {Object.entries(soc.reactions||{}).filter(([,ids])=>ids&&ids.length>0).map(([em,ids])=>(
-          <span key={em} className="pv-rxcount">{em} {ids.length}</span>
+          <span key={em} className="pv-rxcount">{em} <b>{ids.length}</b></span>
         ))}
         {Object.keys(soc.reactions||{}).filter(k=>(soc.reactions[k]||[]).length>0).length===0&&(
           <span className="pv-noreact">No reactions yet</span>
@@ -215,13 +216,44 @@ function CommentsThread({soc, me, onReact, onComment, onReply}) {
       {/* Comments */}
       {(soc.comments||[]).length > 0 && (
         <div className="pv-threadlist">
-          {(soc.comments||[]).map(c=>(
-            <div key={c.id} className={"pv-threaditem"+(c.replyTo?" reply":"")}>
-              <div className="pv-threadwho"><b>{c.byName}</b>{c.replyTo&&<span className="pv-replytag">↩ reply</span>}</div>
-              <div className="pv-threadtxt">{c.text}</div>
-              <button className="pv-replylink" onClick={()=>setReplyTo(c.id)}>Reply</button>
-            </div>
-          ))}
+          {(soc.comments||[]).map(c=>{
+            const cReactions = c.reactions||{};
+            const hasReactions = Object.values(cReactions).some(ids=>ids&&ids.length>0);
+            return (
+              <div key={c.id} className={"pv-threaditem"+(c.replyTo?" reply":"")}>
+                <div className="pv-threadwho">
+                  <b>{c.byName}</b>
+                  {c.replyTo&&<span className="pv-replytag">↩ reply</span>}
+                </div>
+                <div className="pv-threadtxt">{c.text}</div>
+                {/* Comment reactions */}
+                <div className="pv-cmtreacts">
+                  {Object.entries(cReactions).filter(([,ids])=>ids&&ids.length>0).map(([em,ids])=>{
+                    const on=(ids||[]).includes(me.id);
+                    return (
+                      <button key={em} className={"pv-cmtrx"+(on?" on":"")}
+                        onClick={()=>onReactToComment(c.id,em)}>
+                        {em}<b>{ids.length}</b>
+                      </button>
+                    );
+                  })}
+                  <span style={{position:"relative",display:"inline-flex"}}>
+                    <button className="pv-cmtaddrx" onClick={()=>setCommentPicker(commentPicker===c.id?null:c.id)}>＋</button>
+                    {commentPicker===c.id&&(
+                      <div className="pv-pickpop" style={{bottom:28,left:0}}>
+                        {REACTIONS.map(em=>(
+                          <button key={em} onClick={()=>{onReactToComment(c.id,em);setCommentPicker(null);}}>{em}</button>
+                        ))}
+                      </div>
+                    )}
+                  </span>
+                  <button className="pv-replylink" onClick={()=>setReplyTo(replyTo===c.id?null:c.id)}>
+                    {replyTo===c.id?"Cancel reply":"Reply"}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
       {replyTo&&<div className="pv-replyingto">Replying to comment <button onClick={()=>setReplyTo(null)}>✕ cancel</button></div>}
@@ -383,7 +415,20 @@ export default function ProverbsChallenge() {
   const addComment=async(aid,ch,text,replyTo=null)=>{
     if(!me||!text.trim()) return;
     const cur=getSocial(aid,ch);
-    const comments=[...(cur.comments||[]),{id:Date.now()+"-"+Math.random().toString(36).slice(2,5),byId:me.id,byName:me.name,text:text.trim(),ts:Date.now(),replyTo}];
+    const comments=[...(cur.comments||[]),{id:Date.now()+"-"+Math.random().toString(36).slice(2,5),byId:me.id,byName:me.name,text:text.trim(),ts:Date.now(),replyTo,reactions:{}}];
+    await saveSocial(aid,ch,{...cur,comments});
+  };
+  const reactToComment=async(aid,ch,commentId,emoji)=>{
+    if(!me) return;
+    const cur=getSocial(aid,ch);
+    const comments=(cur.comments||[]).map(c=>{
+      if(c.id!==commentId) return c;
+      const reactions={...(c.reactions||{})};
+      const arr=new Set(reactions[emoji]||[]);
+      arr.has(me.id)?arr.delete(me.id):arr.add(me.id);
+      reactions[emoji]=Array.from(arr);
+      return {...c,reactions};
+    });
     await saveSocial(aid,ch,{...cur,comments});
   };
 
@@ -605,6 +650,11 @@ export default function ProverbsChallenge() {
     .pv-threadwho{font-family:'Fraunces',serif;font-size:12px;font-weight:600;color:var(--ink);margin-bottom:2px;display:flex;align-items:center;gap:7px;}
     .pv-replytag{font-size:10px;color:var(--soft);font-weight:400;font-style:italic;}
     .pv-threadtxt{font-size:14px;color:var(--ink);line-height:1.45;}
+    .pv-cmtreacts{display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-top:6px;}
+    .pv-cmtrx{display:inline-flex;align-items:center;gap:3px;background:rgba(255,255,255,.6);border:1px solid rgba(140,98,36,.2);border-radius:12px;padding:2px 7px;cursor:pointer;font-size:13px;}
+    .pv-cmtrx b{font-size:10px;color:var(--gold-d);font-weight:700;}
+    .pv-cmtrx.on{background:#fff;border-color:var(--gold);}
+    .pv-cmtaddrx{width:22px;height:22px;border-radius:50%;border:1px dashed rgba(140,98,36,.4);background:transparent;cursor:pointer;font-size:12px;display:inline-flex;align-items:center;justify-content:center;color:var(--gold-d);}
     .pv-replylink{background:none;border:none;cursor:pointer;font-size:11px;color:var(--gold-d);font-family:'Fraunces',serif;margin-top:4px;padding:0;text-decoration:underline;display:block;}
     .pv-replyingto{font-size:12px;color:var(--soft);font-style:italic;margin-bottom:6px;display:flex;align-items:center;gap:8px;}
     .pv-replyingto button{background:none;border:none;cursor:pointer;color:#9c5a45;font-size:12px;}
@@ -799,6 +849,38 @@ export default function ProverbsChallenge() {
                       {entry.verse?.trim()?<div className="pv-ro verse">"{entry.verse}"</div>:<div className="pv-ro empty">No verse chosen yet.</div>}
                     </div>
                     {entry.meaning?.trim()&&<div className="pv-field"><div className="pv-flabel">What it means to {viewing.name}</div><div className="pv-ro">{entry.meaning}</div></div>}
+                    {/* Reactions + comments on friend's entry when viewing their page */}
+                    <div className="pv-mythread" style={{marginTop:14}}>
+                      <div className="pv-myreactions">
+                        {Object.entries(getSocial(viewing.id,chapter).reactions||{}).filter(([,ids])=>ids&&ids.length>0).map(([em,ids])=>{
+                          const on=(ids||[]).includes(me.id);
+                          return <button key={em} className={"pv-cmtrx"+(on?" on":"")} onClick={()=>toggleReaction(viewing.id,chapter,em)}>{em}<b>{ids.length}</b></button>;
+                        })}
+                        <span style={{position:"relative",display:"inline-flex"}}>
+                          <button className="pv-cmtaddrx" onClick={()=>setPicker(picker===sKey(viewing.id,chapter)?null:sKey(viewing.id,chapter))}>＋</button>
+                          {picker===sKey(viewing.id,chapter)&&(
+                            <div className="pv-pickpop" style={{bottom:28,left:0}}>
+                              {REACTIONS.map(em=><button key={em} onClick={()=>{toggleReaction(viewing.id,chapter,em);setPicker(null);}}>{em}</button>)}
+                            </div>
+                          )}
+                        </span>
+                      </div>
+                      <div className="pv-threadlist">
+                        {(getSocial(viewing.id,chapter).comments||[]).map(c=>(
+                          <div key={c.id} className={"pv-threaditem"+(c.replyTo?" reply":"")}>
+                            <div className="pv-threadwho"><b>{c.byName}</b>{c.replyTo&&<span className="pv-replytag">↩ reply</span>}</div>
+                            <div className="pv-threadtxt">{c.text}</div>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="pv-cmtform" style={{marginTop:8}}>
+                        <input className="pv-cmtin" value={commentDraft}
+                          placeholder={`Encourage ${viewing.name}…`}
+                          onChange={e=>setCommentDraft(e.target.value)}
+                          onKeyDown={e=>{if(e.key==="Enter"){addComment(viewing.id,chapter,commentDraft);setCommentDraft("");}}}/>
+                        <button className="pv-cmtbtn" onClick={()=>{addComment(viewing.id,chapter,commentDraft);setCommentDraft("");}}>Send</button>
+                      </div>
+                    </div>
                   </>
                 ):(
                   <>
@@ -818,6 +900,7 @@ export default function ProverbsChallenge() {
                             onReact={(emoji)=>toggleReaction(me.id,chapter,emoji)}
                             onComment={(text)=>addComment(me.id,chapter,text)}
                             onReply={(replyTo,text)=>addComment(me.id,chapter,text,replyTo)}
+                            onReactToComment={(commentId,emoji)=>reactToComment(me.id,chapter,commentId,emoji)}
                           />
                         </div>
                         {/* Friends sticky notes */}
