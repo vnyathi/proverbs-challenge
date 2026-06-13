@@ -190,10 +190,12 @@ function BibleReader({chapter, onUseVerse}) {
 }
 
 // ── Comments Thread (on my own entry) ────────────────────────────────────────
-function CommentsThread({soc, me, onReact, onComment, onReply, onReactToComment}) {
+function CommentsThread({soc, me, onReact, onComment, onReply, onReactToComment, onEditComment, onDeleteComment, isAdmin}) {
   const [draft, setDraft] = useState("");
   const [replyTo, setReplyTo] = useState(null);
-  const [commentPicker, setCommentPicker] = useState(null); // comment id whose picker is open
+  const [commentPicker, setCommentPicker] = useState(null);
+  const [editingId, setEditingId] = useState(null);
+  const [editDraft, setEditDraft] = useState("");
 
   const handleSend = () => {
     if (!draft.trim()) return;
@@ -202,9 +204,11 @@ function CommentsThread({soc, me, onReact, onComment, onReply, onReactToComment}
     setDraft(""); setReplyTo(null);
   };
 
+  const startEdit = (c) => { setEditingId(c.id); setEditDraft(c.text); };
+  const saveEdit = () => { if(editDraft.trim()) onEditComment(editingId, editDraft); setEditingId(null); };
+
   return (
     <div className="pv-mythread">
-      {/* Reactions on my entry */}
       <div className="pv-myreactions">
         {Object.entries(soc.reactions||{}).filter(([,ids])=>ids&&ids.length>0).map(([em,ids])=>(
           <span key={em} className="pv-rxcount">{em} <b>{ids.length}</b></span>
@@ -213,26 +217,39 @@ function CommentsThread({soc, me, onReact, onComment, onReply, onReactToComment}
           <span className="pv-noreact">No reactions yet</span>
         )}
       </div>
-      {/* Comments */}
       {(soc.comments||[]).length > 0 && (
         <div className="pv-threadlist">
           {(soc.comments||[]).map(c=>{
             const cReactions = c.reactions||{};
-            const hasReactions = Object.values(cReactions).some(ids=>ids&&ids.length>0);
+                              const isMine = c.byId === me.id;
+                  const canDelete = isMine || isAdmin;
             return (
               <div key={c.id} className={"pv-threaditem"+(c.replyTo?" reply":"")}>
                 <div className="pv-threadwho">
                   <b>{c.byName}</b>
                   {c.replyTo&&<span className="pv-replytag">↩ reply</span>}
+                  {(isMine||isAdmin)&&(
+                    <span className="pv-cmt-actions">
+                      {isMine&&<button className="pv-cmtaction" onClick={()=>startEdit(c)}>✏️</button>}
+                      {canDelete&&<button className="pv-cmtaction del" onClick={()=>onDeleteComment(c.id)}>🗑️</button>}
+                    </span>
+                  )}
                 </div>
-                <div className="pv-threadtxt">{c.text}</div>
-                {/* Comment reactions */}
+                {editingId===c.id ? (
+                  <div className="pv-cmtform" style={{marginTop:6}}>
+                    <input className="pv-cmtin" value={editDraft} onChange={e=>setEditDraft(e.target.value)}
+                      onKeyDown={e=>{if(e.key==="Enter")saveEdit();if(e.key==="Escape")setEditingId(null);}}/>
+                    <button className="pv-cmtbtn" onClick={saveEdit}>Save</button>
+                    <button className="pv-cmtbtn" style={{background:"var(--soft)",marginLeft:4}} onClick={()=>setEditingId(null)}>✕</button>
+                  </div>
+                ) : (
+                  <div className="pv-threadtxt">{c.text}{c.edited&&<span className="pv-edited"> (edited)</span>}</div>
+                )}
                 <div className="pv-cmtreacts">
                   {Object.entries(cReactions).filter(([,ids])=>ids&&ids.length>0).map(([em,ids])=>{
                     const on=(ids||[]).includes(me.id);
                     return (
-                      <button key={em} className={"pv-cmtrx"+(on?" on":"")}
-                        onClick={()=>onReactToComment(c.id,em)}>
+                      <button key={em} className={"pv-cmtrx"+(on?" on":"")} onClick={()=>onReactToComment(c.id,em)}>
                         {em}<b>{ids.length}</b>
                       </button>
                     );
@@ -429,6 +446,18 @@ export default function ProverbsChallenge() {
       reactions[emoji]=Array.from(arr);
       return {...c,reactions};
     });
+    await saveSocial(aid,ch,{...cur,comments});
+  };
+  const editComment=async(aid,ch,commentId,newText)=>{
+    if(!me||!newText.trim()) return;
+    const cur=getSocial(aid,ch);
+    const comments=(cur.comments||[]).map(c=>c.id===commentId?{...c,text:newText.trim(),edited:true}:c);
+    await saveSocial(aid,ch,{...cur,comments});
+  };
+  const deleteComment=async(aid,ch,commentId)=>{
+    if(!me) return;
+    const cur=getSocial(aid,ch);
+    const comments=(cur.comments||[]).filter(c=>c.id!==commentId);
     await saveSocial(aid,ch,{...cur,comments});
   };
 
@@ -650,6 +679,10 @@ export default function ProverbsChallenge() {
     .pv-threadwho{font-family:'Fraunces',serif;font-size:12px;font-weight:600;color:var(--ink);margin-bottom:2px;display:flex;align-items:center;gap:7px;}
     .pv-replytag{font-size:10px;color:var(--soft);font-weight:400;font-style:italic;}
     .pv-threadtxt{font-size:14px;color:var(--ink);line-height:1.45;}
+    .pv-cmt-actions{display:inline-flex;gap:4px;margin-left:auto;}
+    .pv-cmtaction{background:none;border:none;cursor:pointer;font-size:13px;padding:0 2px;opacity:.6;}
+    .pv-cmtaction:hover{opacity:1;}
+    .pv-edited{font-size:10px;color:var(--soft);font-style:italic;}
     .pv-cmtreacts{display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-top:6px;}
     .pv-cmtrx{display:inline-flex;align-items:center;gap:3px;background:rgba(255,255,255,.6);border:1px solid rgba(140,98,36,.2);border-radius:12px;padding:2px 7px;cursor:pointer;font-size:13px;}
     .pv-cmtrx b{font-size:10px;color:var(--gold-d);font-weight:700;}
@@ -897,10 +930,13 @@ export default function ProverbsChallenge() {
                           <CommentsThread
                             soc={mySoc}
                             me={me}
+                            isAdmin={me.name===ADMIN_NAME}
                             onReact={(emoji)=>toggleReaction(me.id,chapter,emoji)}
                             onComment={(text)=>addComment(me.id,chapter,text)}
                             onReply={(replyTo,text)=>addComment(me.id,chapter,text,replyTo)}
                             onReactToComment={(commentId,emoji)=>reactToComment(me.id,chapter,commentId,emoji)}
+                            onEditComment={(commentId,newText)=>editComment(me.id,chapter,commentId,newText)}
+                            onDeleteComment={(commentId)=>deleteComment(me.id,chapter,commentId)}
                           />
                         </div>
                         {/* Friends sticky notes */}
