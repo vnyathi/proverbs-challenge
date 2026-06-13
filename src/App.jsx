@@ -882,7 +882,6 @@ export default function ProverbsChallenge() {
                       {entry.verse?.trim()?<div className="pv-ro verse">"{entry.verse}"</div>:<div className="pv-ro empty">No verse chosen yet.</div>}
                     </div>
                     {entry.meaning?.trim()&&<div className="pv-field"><div className="pv-flabel">What it means to {viewing.name}</div><div className="pv-ro">{entry.meaning}</div></div>}
-                    {/* Reactions + comments on friend's entry when viewing their page */}
                     <div className="pv-mythread" style={{marginTop:14}}>
                       <div className="pv-myreactions">
                         {Object.entries(getSocial(viewing.id,chapter).reactions||{}).filter(([,ids])=>ids&&ids.length>0).map(([em,ids])=>{
@@ -901,7 +900,15 @@ export default function ProverbsChallenge() {
                       <div className="pv-threadlist">
                         {(getSocial(viewing.id,chapter).comments||[]).map(c=>(
                           <div key={c.id} className={"pv-threaditem"+(c.replyTo?" reply":"")}>
-                            <div className="pv-threadwho"><b>{c.byName}</b>{c.replyTo&&<span className="pv-replytag">↩ reply</span>}</div>
+                            <div className="pv-threadwho">
+                              <b>{c.byName}</b>
+                              {c.replyTo&&<span className="pv-replytag">↩ reply</span>}
+                              {isAdminUser(me)&&(
+                                <span className="pv-cmt-actions">
+                                  <button className="pv-cmtaction del" onClick={()=>deleteComment(viewing.id,chapter,c.id)}>🗑️</button>
+                                </span>
+                              )}
+                            </div>
                             <div className="pv-threadtxt">{c.text}</div>
                           </div>
                         ))}
