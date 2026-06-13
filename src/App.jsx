@@ -941,6 +941,44 @@ export default function ProverbsChallenge() {
                           );
                         })()}
                       </div>
+                    {/* Sticky notes always visible when your entry is open */}
+                        {friends.length>0&&(()=>{
+                          const fidx=noteIdx%friends.length;
+                          const f=friends[fidx];
+                          if(!f||!f.entries||!f.entries[chapter]) return null;
+                          const fe=f.entries[chapter];
+                          if(!fe.verse?.trim()&&!fe.meaning?.trim()) return null;
+                          const fi=participants.findIndex(x=>x.id===f.id);
+                          const soc=getSocial(f.id,chapter),sk=sKey(f.id,chapter);
+                          return (
+                            <div className="pv-stack">
+                              <div className="pv-stackhd"><span>{friends.length} {friends.length===1?"friend shared":"friends shared"}</span>{friends.length>1&&<em>tap note for next</em>}</div>
+                              <div className="pv-sticky" style={{background:STICKY_BG[fi%STICKY_BG.length],transform:`rotate(${STICKY_ANGLE[fi%STICKY_ANGLE.length]}deg)`}} onClick={()=>friends.length>1&&setNoteIdx(i=>i+1)}>
+                                {fe.verse?.trim()&&<div className="pv-snverse">"{fe.verse}"</div>}
+                                {fe.meaning?.trim()&&<div className="pv-snmean">{fe.meaning}</div>}
+                                <div className="pv-snwho"><Avatar name={f.name} i={fi}/>{f.name}</div>
+                                <div className="pv-rxrow" onClick={e=>e.stopPropagation()}>
+                                  {Object.entries(soc.reactions||{}).filter(([,ids])=>ids&&ids.length>0).map(([em,ids])=>(
+                                    <button key={em} className={"pv-rxbubble"+(ids.includes(me.id)?" on":"")} onClick={()=>toggleReaction(f.id,chapter,em)}><span>{em}</span><b>{ids.length}</b></button>
+                                  ))}
+                                  <span className="pv-picker">
+                                    <button className="pv-addrx" onClick={()=>setPicker(picker===sk?null:sk)}>＋</button>
+                                    {picker===sk&&<div className="pv-pickpop">{REACTIONS.map(em=><button key={em} onClick={()=>{toggleReaction(f.id,chapter,em);setPicker(null);}}>{em}</button>)}</div>}
+                                  </span>
+                                </div>
+                                <div className="pv-cmts" onClick={e=>e.stopPropagation()}>
+                                  {(soc.comments||[]).map(c=><div className="pv-cmt" key={c.id}><b>{c.byName}:</b> {c.text}</div>)}
+                                  <div className="pv-cmtform">
+                                    <input className="pv-cmtin" value={commentDraft} placeholder={"Encourage "+f.name+"…"} onFocus={()=>setPaused(true)} onBlur={()=>setPaused(false)} onChange={e=>setCommentDraft(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){addComment(f.id,chapter,commentDraft);setCommentDraft("");}}}/>
+                                    <button className="pv-cmtbtn" onClick={()=>{addComment(f.id,chapter,commentDraft);setCommentDraft("");}}>Send</button>
+                                  </div>
+                                </div>
+                                {friends.length>1&&<div className="pv-dots" onClick={e=>e.stopPropagation()}>{friends.map((_,di)=><button key={di} className={"pv-dotn"+((noteIdx%friends.length)===di?" on":"")} onClick={()=>setNoteIdx(di)}/>)}</div>}
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
                     ):(
                       /* Edit mode or not yet filled */
                       <div>
