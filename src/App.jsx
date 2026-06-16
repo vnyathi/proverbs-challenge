@@ -317,7 +317,8 @@ export default function ProverbsChallenge() {
   const [myGroups,setMyGroups]=useState([]); // groups I belong to
   const [activeGroup,setActiveGroup]=useState(null); // null = public view
   const [showGroupPanel,setShowGroupPanel]=useState(false);
-  const [groupName,setGroupName]=useState("");
+  const [groupCode, setGroupCode] = useState("");
+  const [groupName, setGroupName] = useState("");
   const [joinCode,setJoinCode]=useState("");
   const [groupError,setGroupError]=useState("");
   const [loading,setLoading]=useState(true);
@@ -366,13 +367,16 @@ export default function ProverbsChallenge() {
 
   const createGroup = async () => {
     if (!groupName.trim()) { setGroupError("Enter a group name."); return; }
-    const code = genCode();
-    const g = { id:"grp-"+Date.now(), name:groupName.trim(), code, creatorId:me.id, members:[me.id], createdAt:Date.now() };
+    const rawCode = groupCode.trim().toUpperCase().replace(/[^A-Z0-9]/g,"");
+    if (rawCode.length < 4 || rawCode.length > 8) { setGroupError("Code must be 4–8 characters (letters and numbers)."); return; }
+    const existing = groups.find(g=>g.code===rawCode);
+    if (existing) { setGroupError("That code is already taken. Choose another."); return; }
+    const g = { id:"grp-"+Date.now(), name:groupName.trim(), code:rawCode, creatorId:me.id, members:[me.id], createdAt:Date.now() };
     try {
       await store.set("group:"+g.id, JSON.stringify(g), true);
       setGroups(gs=>[...gs,g]);
       setMyGroups(gs=>[...gs,g]);
-      setGroupName(""); setGroupError("");
+      setGroupName(""); setGroupCode(""); setGroupError("");
       setActiveGroup(g);
     } catch(e){ setGroupError("Failed to create group."); }
   };
@@ -700,6 +704,7 @@ export default function ProverbsChallenge() {
     .pv-gpmembers{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
     .pv-gpmember{display:inline-flex;align-items:center;gap:5px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:3px 10px;font-size:12px;}
     .pv-gpkick{background:none;border:none;cursor:pointer;color:#9c5a45;font-size:11px;margin-left:3px;}
+    .pv-sharebtn{background:var(--gold-d);color:#fff;border:none;border-radius:6px;padding:4px 10px;font-family:'Fraunces',serif;font-size:11px;cursor:pointer;margin-left:10px;}
     .pv-gpleave{background:none;border:1px solid #9c5a45;color:#9c5a45;border-radius:6px;padding:5px 12px;font-family:'Fraunces',serif;font-size:12px;cursor:pointer;}
     /* People */
     .pv-people{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:4px 2px 14px;}
@@ -955,7 +960,13 @@ export default function ProverbsChallenge() {
             <div className="pv-gpsect">
               <h4>Create a new group</h4>
               <input className="pv-gpinput" value={groupName} placeholder="Group name (e.g. Family, Church Cell)"
-                onChange={e=>setGroupName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&createGroup()}/>
+                onChange={e=>{setGroupName(e.target.value);setGroupError("");}}
+                onKeyDown={e=>e.key==="Enter"&&createGroup()}/>
+              <input className="pv-gpinput" value={groupCode} placeholder="Your invite code (4–8 letters/numbers, e.g. FAMILY24)"
+                maxLength={8}
+                onChange={e=>{setGroupCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,""));setGroupError("");}}
+                onKeyDown={e=>e.key==="Enter"&&createGroup()}
+                style={{letterSpacing:".15em",fontFamily:"'Fraunces',serif"}}/>
               <button className="pv-gpbtn" onClick={createGroup}>Create group</button>
             </div>
 
@@ -976,7 +987,18 @@ export default function ProverbsChallenge() {
                 {myGroups.map(g=>(
                   <div key={g.id} className="pv-gpgroup">
                     <div className="pv-gpgname">{g.name}</div>
-                    <div className="pv-gpcode">Invite code: <b>{g.code}</b></div>
+                    <div className="pv-gpcode">
+                      Invite code: <b>{g.code}</b>
+                      <button className="pv-sharebtn" onClick={()=>{
+                        const url = window.location.href;
+                        const msg = `Join my "${g.name}" Proverbs Challenge group!\n\nInvite code: ${g.code}\n\nOpen the app and tap ＋ Groups → Join with invite code.\n\n${url}`;
+                        if(navigator.share){
+                          navigator.share({title:`Join ${g.name} — Proverbs Challenge`,text:msg});
+                        } else {
+                          navigator.clipboard.writeText(msg).then(()=>alert("Invite message copied to clipboard!"));
+                        }
+                      }}>📤 Share invite</button>
+                    </div>
                     <div className="pv-gpmembers">
                       {(g.members||[]).map(mid=>{
                         const mp=participants.find(p=>p.id===mid);
