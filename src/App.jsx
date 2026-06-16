@@ -317,6 +317,7 @@ export default function ProverbsChallenge() {
   const [myGroups,setMyGroups]=useState([]); // groups I belong to
   const [activeGroup,setActiveGroup]=useState(null); // null = public view
   const [showGroupPanel,setShowGroupPanel]=useState(false);
+  const [announcement, setAnnouncement] = useState("");
   const [groupCode, setGroupCode] = useState("");
   const [groupName, setGroupName] = useState("");
   const [joinCode,setJoinCode]=useState("");
@@ -364,6 +365,31 @@ export default function ProverbsChallenge() {
       setMyGroups(all.filter(g=>(g.members||[]).includes(currentMe.id)));
     } catch(e){}
   },[]);
+
+  const postAnnouncement = async (g) => {
+    if (!announcement.trim()) return;
+    const updated = {...g, announcements: [...(g.announcements||[]), {
+      id: Date.now()+"-"+Math.random().toString(36).slice(2,5),
+      text: announcement.trim(),
+      byName: me.name,
+      ts: Date.now()
+    }]};
+    try {
+      await store.set("group:"+g.id, JSON.stringify(updated), true);
+      setGroups(gs=>gs.map(x=>x.id===g.id?updated:x));
+      setMyGroups(gs=>gs.map(x=>x.id===g.id?updated:x));
+      setAnnouncement("");
+    } catch(e){}
+  };
+
+  const deleteAnnouncement = async (g, annoId) => {
+    const updated = {...g, announcements: (g.announcements||[]).filter(a=>a.id!==annoId)};
+    try {
+      await store.set("group:"+g.id, JSON.stringify(updated), true);
+      setGroups(gs=>gs.map(x=>x.id===g.id?updated:x));
+      setMyGroups(gs=>gs.map(x=>x.id===g.id?updated:x));
+    } catch(e){}
+  };
 
   const createGroup = async () => {
     if (!groupName.trim()) { setGroupError("Enter a group name."); return; }
@@ -704,6 +730,14 @@ export default function ProverbsChallenge() {
     .pv-gpmembers{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
     .pv-gpmember{display:inline-flex;align-items:center;gap:5px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:3px 10px;font-size:12px;}
     .pv-gpkick{background:none;border:none;cursor:pointer;color:#9c5a45;font-size:11px;margin-left:3px;}
+    .pv-annolist{display:flex;flex-direction:column;gap:8px;margin:0 0 14px;}
+    .pv-anno{display:flex;align-items:flex-start;gap:10px;background:#fff8e6;border:1.5px solid var(--gold);border-radius:10px;padding:11px 13px;}
+    .pv-anno-icon{font-size:18px;flex:0 0 auto;margin-top:1px;}
+    .pv-anno-body{flex:1;min-width:0;}
+    .pv-anno-text{font-size:14px;line-height:1.5;color:var(--ink);}
+    .pv-anno-who{font-size:11px;color:var(--soft);font-style:italic;margin-top:3px;}
+    .pv-anno-del{background:none;border:none;cursor:pointer;color:var(--soft);font-size:14px;flex:0 0 auto;padding:0;}
+    .pv-anno-del:hover{color:#9c5a45;}
     .pv-sharebtn{background:var(--gold-d);color:#fff;border:none;border-radius:6px;padding:4px 10px;font-family:'Fraunces',serif;font-size:11px;cursor:pointer;margin-left:10px;}
     .pv-gpleave{background:none;border:1px solid #9c5a45;color:#9c5a45;border-radius:6px;padding:5px 12px;font-family:'Fraunces',serif;font-size:12px;cursor:pointer;}
     /* People */
@@ -999,7 +1033,34 @@ export default function ProverbsChallenge() {
                         }
                       }}>📤 Share invite</button>
                     </div>
-                    <div className="pv-gpmembers">
+                    {/* Announcements */}
+                  {(g.announcements||[]).length > 0 && (
+                    <div style={{marginBottom:8}}>
+                      {(g.announcements||[]).slice().reverse().map(a=>(
+                        <div key={a.id} className="pv-anno" style={{marginBottom:6}}>
+                          <span className="pv-anno-icon">📢</span>
+                          <div className="pv-anno-body">
+                            <div className="pv-anno-text">{a.text}</div>
+                            <div className="pv-anno-who">{a.byName} · {new Date(a.ts).toLocaleDateString()}</div>
+                          </div>
+                          {(isAdminUser(me)||g.creatorId===me.id)&&(
+                            <button className="pv-anno-del" onClick={()=>deleteAnnouncement(g,a.id)}>✕</button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {/* Post announcement — creator only */}
+                  {g.creatorId===me.id&&(
+                    <div className="pv-cmtform" style={{marginBottom:10}}>
+                      <input className="pv-cmtin" value={announcement}
+                        placeholder="Post an announcement to the group…"
+                        onChange={e=>setAnnouncement(e.target.value)}
+                        onKeyDown={e=>e.key==="Enter"&&postAnnouncement(g)}/>
+                      <button className="pv-cmtbtn" onClick={()=>postAnnouncement(g)}>📢</button>
+                    </div>
+                  )}
+                  <div className="pv-gpmembers">
                       {(g.members||[]).map(mid=>{
                         const mp=participants.find(p=>p.id===mid);
                         const mname=mp?.name||(mid===me.id?me.name:"Unknown");
@@ -1020,6 +1081,24 @@ export default function ProverbsChallenge() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Announcements banner for active group */}
+      {activeGroup && (activeGroup.announcements||[]).length > 0 && (
+        <div className="pv-annolist">
+          {(activeGroup.announcements||[]).slice().reverse().map(a=>(
+            <div key={a.id} className="pv-anno">
+              <span className="pv-anno-icon">📢</span>
+              <div className="pv-anno-body">
+                <div className="pv-anno-text">{a.text}</div>
+                <div className="pv-anno-who">{a.byName} · {new Date(a.ts).toLocaleDateString()}</div>
+              </div>
+              {isAdminUser(me)||activeGroup.creatorId===me.id?(
+                <button className="pv-anno-del" onClick={()=>deleteAnnouncement(activeGroup,a.id)}>✕</button>
+              ):null}
+            </div>
+          ))}
         </div>
       )}
 
