@@ -343,6 +343,8 @@ export default function ProverbsChallenge() {
   const [notifications,setNotifications]=useState([]);
   const [showNotifs,setShowNotifs]=useState(false);
   const [isPrivate,setIsPrivate]=useState(false);
+  const [showLeaderboard,setShowLeaderboard]=useState(false);
+  const [lbChapter,setLbChapter]=useState(null);
   const saveTimer=useRef(null);
   const rowRefs=useRef({});
 
@@ -445,6 +447,17 @@ export default function ProverbsChallenge() {
   const visibleParticipants = activeGroup
     ? participants.filter(p=>(activeGroup.members||[]).includes(p.id))
     : participants.filter(p=>!p.isPrivate || p.id===me?.id);
+
+  // ── Completion tracking (for Progress / leaderboard panel) ───────────────────
+  const chapterDone = (entries, ch) => {
+    const e = entries && entries[ch];
+    return !!(e && (e.verse?.trim() || e.meaning?.trim()));
+  };
+  const chapterCount = (p) => {
+    let n = 0; for (let ch = 1; ch <= 31; ch++) if (chapterDone(p.entries, ch)) n++; return n;
+  };
+  const chapterCompleters = (ch) =>
+    visibleParticipants.filter(p => chapterDone(p.entries, ch)).sort((a,b)=>a.name.localeCompare(b.name));
 
   // ── Load ────────────────────────────────────────────────────────────────────
   const loadParticipants = useCallback(async () => {
@@ -740,6 +753,23 @@ export default function ProverbsChallenge() {
     .pv-anno-del:hover{color:#9c5a45;}
     .pv-sharebtn{background:var(--gold-d);color:#fff;border:none;border-radius:6px;padding:4px 10px;font-family:'Fraunces',serif;font-size:11px;cursor:pointer;margin-left:10px;}
     .pv-gpleave{background:none;border:1px solid #9c5a45;color:#9c5a45;border-radius:6px;padding:5px 12px;font-family:'Fraunces',serif;font-size:12px;cursor:pointer;}
+    /* Leaderboard / Progress panel */
+    .pv-lbrow{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line);}
+    .pv-lbrow:last-child{border-bottom:none;}
+    .pv-lbrank{font-family:'Fraunces',serif;font-weight:700;font-size:13px;color:var(--gold-d);width:22px;text-align:center;flex:0 0 auto;}
+    .pv-lbname{font-family:'Fraunces',serif;font-size:14px;flex:0 0 auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:110px;}
+    .pv-lbbar{flex:1;height:7px;background:var(--card2);border:1px solid var(--line);border-radius:6px;overflow:hidden;min-width:50px;}
+    .pv-lbfill{height:100%;background:linear-gradient(90deg,var(--gold),var(--gold-d));}
+    .pv-lbcount{font-family:'Fraunces',serif;font-size:11px;color:var(--soft);flex:0 0 auto;width:42px;text-align:right;}
+    .pv-lbcrownnote{font-size:12px;color:var(--soft);font-style:italic;margin-top:8px;text-align:center;}
+    .pv-lbchips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+    .pv-lbchip{font-family:'Fraunces',serif;font-size:12px;background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:6px 4px;width:38px;cursor:pointer;color:var(--ink);display:flex;flex-direction:column;align-items:center;}
+    .pv-lbchip small{font-size:9px;color:var(--soft);margin-top:2px;}
+    .pv-lbchip.on{background:var(--gold-d);color:#fff;border-color:var(--gold-d);}
+    .pv-lbchip.on small{color:#f6eed9;}
+    .pv-lbdetail{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;}
+    .pv-lbdetailhd{font-family:'Fraunces',serif;font-weight:600;font-size:13px;color:var(--gold-d);margin-bottom:8px;}
+    .pv-lbnames{display:flex;flex-wrap:wrap;gap:6px;}
     /* People */
     .pv-people{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:4px 2px 14px;}
     .pv-people .pv-lead{font-style:italic;color:var(--soft);font-size:13px;font-family:'Spectral',serif;width:100%;margin-bottom:2px;}
@@ -974,6 +1004,7 @@ export default function ProverbsChallenge() {
           </button>
         ))}
         <button className="pv-grpbtn manage" onClick={()=>setShowGroupPanel(true)}>＋ Groups</button>
+        <button className="pv-grpbtn manage" onClick={()=>setShowLeaderboard(true)}>🏆 Progress</button>
       </div>
 
       {showNotifs&&(
@@ -1080,6 +1111,67 @@ export default function ProverbsChallenge() {
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Progress / leaderboard panel */}
+      {showLeaderboard&&(
+        <div className="pv-grouppanel" onClick={e=>{if(e.target===e.currentTarget){setShowLeaderboard(false);setLbChapter(null);}}}>
+          <div className="pv-groupcard">
+            <div className="pv-gphead">
+              <span className="pv-gptitle">🏆 Progress — {activeGroup?activeGroup.name:"Everyone"}</span>
+              <button className="pv-gpclose" onClick={()=>{setShowLeaderboard(false);setLbChapter(null);}}>✕</button>
+            </div>
+
+            {/* Overall leaderboard */}
+            <div className="pv-gpsect">
+              <h4>Overall completion</h4>
+              {visibleParticipants.length===0&&<div className="pv-ro empty">No one to show yet.</div>}
+              {[...visibleParticipants]
+                .map(p=>({p,count:chapterCount(p)}))
+                .sort((a,b)=>b.count-a.count||a.p.name.localeCompare(b.p.name))
+                .map(({p,count},i)=>(
+                  <div key={p.id} className="pv-lbrow">
+                    <span className="pv-lbrank">{count===31?"👑":i+1}</span>
+                    <Avatar name={p.name} i={participants.findIndex(x=>x.id===p.id)}/>
+                    <span className="pv-lbname">{p.name}{p.id===me.id?" (you)":""}</span>
+                    <div className="pv-lbbar"><div className="pv-lbfill" style={{width:`${(count/31)*100}%`}}/></div>
+                    <span className="pv-lbcount">{count}/31</span>
+                  </div>
+                ))}
+              {visibleParticipants.some(p=>chapterCount(p)===31)&&(
+                <div className="pv-lbcrownnote">👑 Finished all 31 chapters</div>
+              )}
+            </div>
+
+            {/* By chapter */}
+            <div className="pv-gpsect">
+              <h4>Who's completed each chapter</h4>
+              <div className="pv-lbchips">
+                {THEMES.map((_,idx)=>{
+                  const ch=idx+1;
+                  const n=chapterCompleters(ch).length;
+                  return (
+                    <button key={ch} className={"pv-lbchip"+(lbChapter===ch?" on":"")} onClick={()=>setLbChapter(lbChapter===ch?null:ch)}>
+                      {ch}<small>{n}</small>
+                    </button>
+                  );
+                })}
+              </div>
+              {lbChapter&&(
+                <div className="pv-lbdetail">
+                  <div className="pv-lbdetailhd">Proverbs {lbChapter} — {chapterCompleters(lbChapter).length} completed</div>
+                  {chapterCompleters(lbChapter).length>0?(
+                    <div className="pv-lbnames">
+                      {chapterCompleters(lbChapter).map(p=>(
+                        <span key={p.id} className="pv-gpmember"><Avatar name={p.name} i={participants.findIndex(x=>x.id===p.id)}/>{p.name}{p.id===me.id?" (you)":""}</span>
+                      ))}
+                    </div>
+                  ):<div className="pv-ro empty">No one yet — be the first!</div>}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
