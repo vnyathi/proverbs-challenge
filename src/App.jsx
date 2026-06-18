@@ -36,6 +36,20 @@ const THEMES = [
 ];
 
 const ADMIN_NAME = "Vincent";
+const MOTIVATIONS = [
+  "Well done, {name}! Wisdom is taking root in you.",
+  "Another step closer to a wiser heart, {name}.",
+  "Beautiful reflection, {name} — keep building the habit.",
+  "You showed up today, {name}. That's faithfulness.",
+  "\"The wise in heart accept commands\" — and you just did, {name}.",
+  "Great job, {name}! Consistency like this is its own kind of wisdom.",
+  "One more chapter, one more treasure stored up, {name}.",
+  "Keep going, {name} — wisdom is calling, and you're listening.",
+  "Your faithfulness today is shaping who you become, {name}.",
+  "That reflection mattered, {name}. Proud of you for showing up.",
+  "Small daily steps, {name} — this is how wisdom is built.",
+  "You're not just reading Proverbs, {name} — you're living it.",
+];
 const isAdminUser = (me) => me && me.name.trim().toLowerCase() === ADMIN_NAME.trim().toLowerCase();
 const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "reader";
 const palette = ["#b0833f","#6b7f5e","#9c5a45","#5e6f86","#8a6e9c","#a07b54"];
@@ -345,6 +359,8 @@ export default function ProverbsChallenge() {
   const [isPrivate,setIsPrivate]=useState(false);
   const [showLeaderboard,setShowLeaderboard]=useState(false);
   const [lbChapter,setLbChapter]=useState(null);
+  const [toast,setToast]=useState(null);
+  const [showAllDone,setShowAllDone]=useState(false);
   const saveTimer=useRef(null);
   const rowRefs=useRef({});
 
@@ -586,6 +602,11 @@ export default function ProverbsChallenge() {
 
   useEffect(()=>{setNoteIdx(0);setCommentDraft("");setPicker(null);},[open]);
   useEffect(()=>{
+    if(!toast) return;
+    const t=setTimeout(()=>setToast(null),4500);
+    return()=>clearTimeout(t);
+  },[toast]);
+  useEffect(()=>{
     if(open===null||paused||picker) return;
     const id=setInterval(()=>setNoteIdx(i=>i+1),5000); return()=>clearInterval(id);
   },[open,paused,picker]);
@@ -645,8 +666,18 @@ export default function ProverbsChallenge() {
     try{await store.set("user:"+id,JSON.stringify({...person,entries:{},updatedAt:Date.now()}),true);loadParticipants();}catch(e){}
   };
   const update=(chapter,field,value)=>{
+    const wasComplete=chapterDone(myEntries,chapter);
     const next={...myEntries,[chapter]:{...myEntries[chapter],[field]:value}};
     setMyEntries(next); if(me) persist(next,me,isPrivate);
+    const isNowComplete=chapterDone(next,chapter);
+    if(!wasComplete&&isNowComplete){
+      let totalDone=0; for(let c=1;c<=31;c++) if(chapterDone(next,c)) totalDone++;
+      if(totalDone===31){ setShowAllDone(true); }
+      else {
+        const raw=MOTIVATIONS[Math.floor(Math.random()*MOTIVATIONS.length)];
+        setToast({chapter,message:raw.replace("{name}",me.name)});
+      }
+    }
   };
   const togglePrivacy=async()=>{
     const priv=!isPrivate; setIsPrivate(priv);
@@ -770,6 +801,12 @@ export default function ProverbsChallenge() {
     .pv-lbdetail{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;}
     .pv-lbdetailhd{font-family:'Fraunces',serif;font-weight:600;font-size:13px;color:var(--gold-d);margin-bottom:8px;}
     .pv-lbnames{display:flex;flex-wrap:wrap;gap:6px;}
+    /* Chapter-complete toast */
+    .pv-toast{position:fixed;bottom:24px;left:50%;max-width:380px;width:calc(100% - 32px);background:var(--ink);color:#f6eed9;border-radius:12px;padding:14px 16px;display:flex;align-items:flex-start;gap:10px;box-shadow:0 8px 24px rgba(0,0,0,.3);z-index:80;cursor:pointer;animation:pv-toast-in .35s ease forwards;}
+    .pv-toast-icon{font-size:20px;flex:0 0 auto;line-height:1.3;}
+    .pv-toast-title{font-family:'Fraunces',serif;font-weight:600;font-size:14px;}
+    .pv-toast-msg{font-size:13px;color:#e8dcc0;margin-top:2px;font-style:italic;line-height:1.4;}
+    @keyframes pv-toast-in{from{opacity:0;transform:translate(-50%,14px);}to{opacity:1;transform:translate(-50%,0);}}
     /* People */
     .pv-people{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:4px 2px 14px;}
     .pv-people .pv-lead{font-style:italic;color:var(--soft);font-size:13px;font-family:'Spectral',serif;width:100%;margin-bottom:2px;}
@@ -1399,6 +1436,30 @@ export default function ProverbsChallenge() {
           <p style={{fontSize:14,color:"var(--soft)",margin:"10px 0 4px",lineHeight:1.45}}>This permanently deletes {me.name}'s page. This can't be undone.</p>
           <button className="pv-btn" style={{background:"#9c5a45"}} onClick={deleteMe}>Delete my page</button>
           <button className="pv-chip" style={{marginTop:12}} onClick={()=>setConfirmDelete(false)}>Cancel</button>
+        </div>
+      </div>
+    )}
+
+    {showAllDone&&(
+      <div className="pv-modal" onClick={e=>{if(e.target===e.currentTarget)setShowAllDone(false);}}>
+        <div className="pv-modalcard">
+          <div style={{fontSize:42,lineHeight:1}}>🎉</div>
+          <div className="pv-label" style={{letterSpacing:".08em",marginTop:10}}>All 31 chapters complete, {me.name}!</div>
+          <p style={{fontSize:14,color:"var(--soft)",margin:"10px 0 4px",lineHeight:1.45}}>
+            You've walked through the whole book of Proverbs, {me.name}. Keep this journey close — download your personal devotional journal as a keepsake of these 31 days.
+          </p>
+          <button className="pv-btn" onClick={()=>{downloadPDF(me,myEntries);setShowAllDone(false);}}>⬇ Download My Devotional Journal</button>
+          <button className="pv-chip" style={{marginTop:12}} onClick={()=>setShowAllDone(false)}>Maybe later</button>
+        </div>
+      </div>
+    )}
+
+    {toast&&(
+      <div className="pv-toast" onClick={()=>setToast(null)}>
+        <span className="pv-toast-icon">✨</span>
+        <div className="pv-toast-body">
+          <div className="pv-toast-title">Proverbs {toast.chapter} complete!</div>
+          <div className="pv-toast-msg">{toast.message}</div>
         </div>
       </div>
     )}
