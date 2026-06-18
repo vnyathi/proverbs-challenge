@@ -475,6 +475,14 @@ export default function ProverbsChallenge() {
   const chapterCompleters = (ch) =>
     visibleParticipants.filter(p => chapterDone(p.entries, ch)).sort((a,b)=>a.name.localeCompare(b.name));
 
+  // ── Stricter completion check (verse AND reflection) — used to trigger the
+  //    celebratory toast / all-done message, separate from the looser
+  //    chapterDone used for the public Progress panel.
+  const bothFieldsDone = (entries, ch) => {
+    const e = entries && entries[ch];
+    return !!(e && e.verse?.trim() && e.meaning?.trim());
+  };
+
   // ── Load ────────────────────────────────────────────────────────────────────
   const loadParticipants = useCallback(async () => {
     try {
@@ -666,12 +674,12 @@ export default function ProverbsChallenge() {
     try{await store.set("user:"+id,JSON.stringify({...person,entries:{},updatedAt:Date.now()}),true);loadParticipants();}catch(e){}
   };
   const update=(chapter,field,value)=>{
-    const wasComplete=chapterDone(myEntries,chapter);
+    const wasComplete=bothFieldsDone(myEntries,chapter);
     const next={...myEntries,[chapter]:{...myEntries[chapter],[field]:value}};
     setMyEntries(next); if(me) persist(next,me,isPrivate);
-    const isNowComplete=chapterDone(next,chapter);
+    const isNowComplete=bothFieldsDone(next,chapter);
     if(!wasComplete&&isNowComplete){
-      let totalDone=0; for(let c=1;c<=31;c++) if(chapterDone(next,c)) totalDone++;
+      let totalDone=0; for(let c=1;c<=31;c++) if(bothFieldsDone(next,c)) totalDone++;
       if(totalDone===31){ setShowAllDone(true); }
       else {
         const raw=MOTIVATIONS[Math.floor(Math.random()*MOTIVATIONS.length)];
