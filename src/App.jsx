@@ -650,6 +650,7 @@ export default function ProverbsChallenge() {
     setMe(p); setMyEntries(person.entries||{}); setIsPrivate(p.isPrivate);
     setOpen(todayChapter()||1);
     localStorage.setItem("me",JSON.stringify(p));
+    localStorage.setItem("pv-lastUser",p.id);
     await loadGroups(p);
   };
   const askPin=person=>{setPinFor(person);setPinInput("");setPinError("");};
@@ -671,6 +672,7 @@ export default function ProverbsChallenge() {
     const person={id,name,pinHash,isPrivate:false};
     setMe(person); setMyEntries({}); setOpen(todayChapter()||1); setIsPrivate(false);
     localStorage.setItem("me",JSON.stringify(person));
+    localStorage.setItem("pv-lastUser",id);
     try{await store.set("user:"+id,JSON.stringify({...person,entries:{},updatedAt:Date.now()}),true);loadParticipants();}catch(e){}
   };
   const update=(chapter,field,value)=>{
@@ -737,6 +739,7 @@ export default function ProverbsChallenge() {
     .pv-returning{margin:22px auto 0;max-width:430px;}
     .pv-rbtns{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:10px;}
     .pv-rbtn{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:6px 14px 6px 7px;cursor:pointer;font-family:'Fraunces',serif;font-size:14px;color:var(--ink);}
+    .pv-rbtn-last{order:-1;background:#ece6f5;border:2px solid #8a6e9c;box-shadow:0 2px 10px rgba(138,110,156,.22);font-weight:600;}
     .pv-or{text-align:center;font-style:italic;color:var(--soft);font-size:13px;margin:18px 0 0;}
     .pv-err{color:#9c5a45;font-size:13px;margin-top:9px;text-align:center;font-style:italic;font-weight:500;}
     .pv-notice{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:8px;padding:13px 15px;margin:20px auto 0;max-width:430px;font-size:13.5px;line-height:1.5;}
@@ -958,7 +961,12 @@ export default function ProverbsChallenge() {
   if(loading) return <div className="pv-root"><style>{css}</style><div style={{textAlign:"center",padding:"60px 20px",fontStyle:"italic",color:"#7b6c50"}}>Opening the scroll…</div></div>;
 
   // ── Welcome ─────────────────────────────────────────────────────────────────
-  if(!me) return (
+  if(!me){
+  const lastUserId=localStorage.getItem("pv-lastUser");
+  const orderedParticipants=participants
+    .map((p,idx)=>({p,idx}))
+    .sort((a,b)=>{ if(a.p.id===lastUserId)return -1; if(b.p.id===lastUserId)return 1; return 0; });
+  return (
     <div className="pv-root"><style>{css}</style>
     <div className="pv-wrap">
       <div className="pv-hero">
@@ -974,7 +982,7 @@ export default function ProverbsChallenge() {
         {participants.length>0&&(
           <div className="pv-returning">
             <div className="pv-label" style={{textAlign:"center",marginTop:22}}>Returning? Tap your name</div>
-            <div className="pv-rbtns">{participants.map((p,i)=><button key={p.id} className="pv-rbtn" onClick={()=>askPin(p)}><Avatar name={p.name} i={i}/>{p.name}</button>)}</div>
+            <div className="pv-rbtns">{orderedParticipants.map(({p,idx})=><button key={p.id} className={"pv-rbtn"+(p.id===lastUserId?" pv-rbtn-last":"")} onClick={()=>askPin(p)}><Avatar name={p.name} i={idx}/>{p.name}</button>)}</div>
             <div className="pv-or">— or join as someone new —</div>
           </div>
         )}
@@ -1004,6 +1012,7 @@ export default function ProverbsChallenge() {
     )}
     </div>
   );
+  }
 
   const readOnly=!!viewing;
   const activeEntries=viewing?(viewing.entries||{}):myEntries;
