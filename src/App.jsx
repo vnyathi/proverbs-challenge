@@ -78,7 +78,7 @@ async function downloadPDF(me, entries) {
   const ink=[30,24,14],soft=[100,88,65],gold=[160,115,50];
   const months=["January","February","March","April","May","June","July","August","September","October","November","December"];
   const dateStr=`${months[new Date().getMonth()]} ${new Date().getFullYear()}`;
-  const completed=Object.keys(entries).filter(c=>entries[c]?.verse?.trim()||entries[c]?.meaning?.trim()).length;
+  const completed=Object.keys(entries).filter(c=>entries[c]?.read).length;
   doc.setFillColor(252,248,238); doc.rect(0,0,W,297,"F");
   doc.setFillColor(...gold); doc.rect(0,0,18,297,"F");
   doc.setTextColor(...soft); doc.setFontSize(9); doc.setFont("helvetica","normal");
@@ -349,6 +349,9 @@ export default function ProverbsChallenge() {
   const [joinError,setJoinError]=useState("");
   const [viewing,setViewing]=useState(null);
   const [confirmDelete,setConfirmDelete]=useState(false);
+  const [renaming,setRenaming]=useState(false);
+  const [renameDraft,setRenameDraft]=useState("");
+  const [readErr,setReadErr]=useState({});
   const [social,setSocial]=useState({});
   const [noteIdx,setNoteIdx]=useState(0);
   const [commentDraft,setCommentDraft]=useState("");
@@ -464,10 +467,11 @@ export default function ProverbsChallenge() {
     ? participants.filter(p=>(activeGroup.members||[]).includes(p.id))
     : participants.filter(p=>!p.isPrivate || p.id===me?.id);
 
-  // ── Completion tracking (for Progress / leaderboard panel) ───────────────────
+  // ── Completion tracking — a chapter counts as done only when the reader
+  //    has ticked "I have read" (which itself requires both reflections). ──────
   const chapterDone = (entries, ch) => {
     const e = entries && entries[ch];
-    return !!(e && (e.verse?.trim() || e.meaning?.trim()));
+    return !!(e && e.read);
   };
   const chapterCount = (p) => {
     let n = 0; for (let ch = 1; ch <= 31; ch++) if (chapterDone(p.entries, ch)) n++; return n;
@@ -664,7 +668,7 @@ export default function ProverbsChallenge() {
   const join=async()=>{
     const name=nameInput.trim(); if(!name) return;
     const existing=participants.find(p=>p.name.toLowerCase()===name.toLowerCase());
-    if(existing){setNameInput("");setNewPin("");askPin(existing);return;}
+    if(existing){setJoinError(`"${existing.name}" is already taken. If that's you, tap your name above to sign in — otherwise please choose a different name.`);return;}
     const pin=newPin.trim();
     if(!/^\d{4,8}$/.test(pin)){setJoinError("Choose a PIN of 4–8 digits.");return;}
     const id=slug(name)+"-"+Math.random().toString(36).slice(2,6);
@@ -676,24 +680,43 @@ export default function ProverbsChallenge() {
     try{await store.set("user:"+id,JSON.stringify({...person,entries:{},updatedAt:Date.now()}),true);loadParticipants();}catch(e){}
   };
   const update=(chapter,field,value)=>{
-    const wasComplete=bothFieldsDone(myEntries,chapter);
     const next={...myEntries,[chapter]:{...myEntries[chapter],[field]:value}};
     setMyEntries(next); if(me) persist(next,me,isPrivate);
-    const isNowComplete=bothFieldsDone(next,chapter);
-    if(!wasComplete&&isNowComplete){
-      let totalDone=0; for(let c=1;c<=31;c++) if(bothFieldsDone(next,c)) totalDone++;
-      if(totalDone===31){ setShowAllDone(true); }
-      else {
-        const raw=MOTIVATIONS[Math.floor(Math.random()*MOTIVATIONS.length)];
-        setToast({chapter,message:raw.replace("{name}",me.name)});
-      }
+    if(readErr[chapter]) setReadErr(e=>({...e,[chapter]:""}));
+  };
+  const toggleRead=(chapter)=>{
+    const cur=myEntries[chapter]||{};
+    if(cur.read){ // un-mark
+      const next={...myEntries,[chapter]:{...cur,read:false}};
+      setMyEntries(next); if(me) persist(next,me,isPrivate);
+      return;
     }
+    // Strict rule: can't mark read until BOTH reflections are written
+    if(!(cur.verse?.trim()&&cur.meaning?.trim())){
+      setReadErr(e=>({...e,[chapter]:"Finish your reflection first — add your favourite verse and what it means to you before marking this chapter as read."}));
+      return;
+    }
+    setReadErr(e=>({...e,[chapter]:""}));
+    const next={...myEntries,[chapter]:{...cur,read:true}};
+    setMyEntries(next); if(me) persist(next,me,isPrivate);
+    let totalDone=0; for(let c=1;c<=31;c++) if(next[c]?.read) totalDone++;
+    if(totalDone===31){ setShowAllDone(true); }
+    else { const raw=MOTIVATIONS[Math.floor(Math.random()*MOTIVATIONS.length)]; setToast({chapter,message:raw.replace("{name}",me.name)}); }
   };
   const togglePrivacy=async()=>{
     const priv=!isPrivate; setIsPrivate(priv);
     const updated={...me,isPrivate:priv};
     setMe(updated); localStorage.setItem("me",JSON.stringify(updated));
     persist(myEntries,updated,priv);
+  };
+  const saveName=()=>{
+    const name=renameDraft.trim();
+    if(!name){setRenaming(false);return;}
+    if(name===me.name){setRenaming(false);return;}
+    const updated={...me,name};
+    setMe(updated); localStorage.setItem("me",JSON.stringify(updated));
+    persist(myEntries,updated,isPrivate); // same id → PIN, entries, groups all preserved
+    setRenaming(false);
   };
   const switchReader=async()=>{
     localStorage.removeItem("me");
@@ -740,6 +763,18 @@ export default function ProverbsChallenge() {
     .pv-rbtns{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:10px;}
     .pv-rbtn{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:6px 14px 6px 7px;cursor:pointer;font-family:'Fraunces',serif;font-size:14px;color:var(--ink);}
     .pv-rbtn-last{order:-1;background:#ece6f5;border:2px solid #8a6e9c;box-shadow:0 2px 10px rgba(138,110,156,.22);font-weight:600;}
+    .pv-name{font-family:'Fraunces',serif;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;}
+    .pv-name:hover{color:var(--gold-d);}
+    .pv-nameedit{font-size:11px;opacity:.55;}
+    .pv-renamein{font-family:'Fraunces',serif;font-size:14px;font-weight:600;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:4px 10px;width:150px;outline:none;background:var(--card);}
+    .pv-renamein:focus{border-color:#8a6e9c;}
+    .pv-readcheck{display:inline-flex;align-items:center;gap:9px;margin-top:14px;padding:9px 14px;border:1.5px solid var(--line);border-radius:12px;cursor:pointer;font-family:'Fraunces',serif;font-size:14px;color:var(--ink);user-select:none;transition:all .15s;}
+    .pv-readcheck:hover{border-color:var(--gold-d);}
+    .pv-readcheck.on{background:#eef3e9;border-color:#6b7f5e;color:#43543a;font-weight:600;}
+    .pv-readbox{width:20px;height:20px;border-radius:6px;border:1.5px solid var(--soft);display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff;flex:0 0 auto;}
+    .pv-readcheck.on .pv-readbox{background:#6b7f5e;border-color:#6b7f5e;}
+    .pv-readerr{margin-top:8px;font-family:'Fraunces',serif;font-size:13px;color:#9c5a45;background:#f6ece8;border:1px solid #e3cabf;border-radius:10px;padding:8px 12px;}
+    .pv-lbrow.me{background:#f3eede;border-radius:8px;margin:2px -8px;padding-left:8px;padding-right:8px;}
     .pv-or{text-align:center;font-style:italic;color:var(--soft);font-size:13px;margin:18px 0 0;}
     .pv-err{color:#9c5a45;font-size:13px;margin-top:9px;text-align:center;font-style:italic;font-weight:500;}
     .pv-notice{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:8px;padding:13px 15px;margin:20px auto 0;max-width:430px;font-size:13.5px;line-height:1.5;}
@@ -965,7 +1000,7 @@ export default function ProverbsChallenge() {
   const lastUserId=localStorage.getItem("pv-lastUser");
   const orderedParticipants=participants
     .map((p,idx)=>({p,idx}))
-    .sort((a,b)=>{ if(a.p.id===lastUserId)return -1; if(b.p.id===lastUserId)return 1; return 0; });
+    .sort((a,b)=>{ if(a.p.id===lastUserId)return -1; if(b.p.id===lastUserId)return 1; return a.p.name.localeCompare(b.p.name); });
   return (
     <div className="pv-root"><style>{css}</style>
     <div className="pv-wrap">
@@ -1016,7 +1051,7 @@ export default function ProverbsChallenge() {
 
   const readOnly=!!viewing;
   const activeEntries=viewing?(viewing.entries||{}):myEntries;
-  const activeDone=Object.keys(activeEntries).filter(c=>activeEntries[c]&&(activeEntries[c].verse?.trim()||activeEntries[c].meaning?.trim())).length;
+  const activeDone=Object.keys(activeEntries).filter(c=>activeEntries[c]&&activeEntries[c].read).length;
 
   // ── Main ────────────────────────────────────────────────────────────────────
   return (
@@ -1032,11 +1067,23 @@ export default function ProverbsChallenge() {
       <div className="pv-status">
         <div className="pv-reader">
           <Avatar name={me.name} i={0}/>
-          <span style={{fontFamily:"'Fraunces',serif",fontWeight:600}}>{me.name}</span>
-          <button className="pv-chip" onClick={switchReader}>Sign out</button>
-          <button className={`pv-chip${isPrivate?" priv":""}`} onClick={togglePrivacy} title={isPrivate?"Switch to Public":"Switch to Private"}>
-            {isPrivate?"🔒 Private":"🌐 Public"}
-          </button>
+          {renaming?(
+            <>
+              <input className="pv-renamein" value={renameDraft} autoFocus maxLength={40}
+                onChange={e=>setRenameDraft(e.target.value)}
+                onKeyDown={e=>{if(e.key==="Enter")saveName();if(e.key==="Escape")setRenaming(false);}}/>
+              <button className="pv-chip" onClick={saveName}>Save</button>
+              <button className="pv-chip" onClick={()=>setRenaming(false)}>✕</button>
+            </>
+          ):(
+            <>
+              <span className="pv-name" onClick={()=>{setRenameDraft(me.name);setRenaming(true);}} title="Tap to edit your name">{me.name} <span className="pv-nameedit">✏️</span></span>
+              <button className="pv-chip" onClick={switchReader}>Sign out</button>
+              <button className={`pv-chip${isPrivate?" priv":""}`} onClick={togglePrivacy} title={isPrivate?"Switch to Public":"Switch to Private"}>
+                {isPrivate?"🔒 Private":"🌐 Public"}
+              </button>
+            </>
+          )}
         </div>
         <div className="pv-prog">
           <div className="pv-ptrack"><div className="pv-pfill" style={{width:`${(activeDone/31)*100}%`}}/></div>
@@ -1182,18 +1229,22 @@ export default function ProverbsChallenge() {
             <div className="pv-gpsect">
               <h4>Overall completion</h4>
               {visibleParticipants.length===0&&<div className="pv-ro empty">No one to show yet.</div>}
-              {[...visibleParticipants]
-                .map(p=>({p,count:chapterCount(p)}))
-                .sort((a,b)=>b.count-a.count||a.p.name.localeCompare(b.p.name))
-                .map(({p,count},i)=>(
-                  <div key={p.id} className="pv-lbrow">
-                    <span className="pv-lbrank">{count===31?"👑":i+1}</span>
+              {(()=>{
+                const ranked=[...visibleParticipants]
+                  .map(p=>({p,count:chapterCount(p)}))
+                  .sort((a,b)=>b.count-a.count||a.p.name.localeCompare(b.p.name))
+                  .map((x,i)=>({...x,rank:i+1}));
+                const meFirst=[...ranked].sort((a,b)=>(a.p.id===me.id?-1:b.p.id===me.id?1:0));
+                return meFirst.map(({p,count,rank})=>(
+                  <div key={p.id} className={"pv-lbrow"+(p.id===me.id?" me":"")}>
+                    <span className="pv-lbrank">{count===31?"👑":rank}</span>
                     <Avatar name={p.name} i={participants.findIndex(x=>x.id===p.id)}/>
                     <span className="pv-lbname">{p.name}{p.id===me.id?" (you)":""}</span>
                     <div className="pv-lbbar"><div className="pv-lbfill" style={{width:`${(count/31)*100}%`}}/></div>
                     <span className="pv-lbcount">{count}/31</span>
                   </div>
-                ))}
+                ));
+              })()}
               {visibleParticipants.some(p=>chapterCount(p)===31)&&(
                 <div className="pv-lbcrownnote">👑 Finished all 31 chapters</div>
               )}
@@ -1271,14 +1322,14 @@ export default function ProverbsChallenge() {
 
       {tc&&<button className="pv-todaybtn" onClick={()=>{setOpen(tc);setTimeout(()=>rowRefs.current[tc]?.scrollIntoView({behavior:"smooth",block:"center"}),60);}}>Go to today · Proverbs {tc}</button>}
 
-      {tc&&!readOnly&&!(myEntries[tc]?.verse?.trim()||myEntries[tc]?.meaning?.trim())&&(
+      {tc&&!readOnly&&!myEntries[tc]?.read&&(
         <div className="pv-reminder">
           <span className="pv-reminder-icon">📖</span>
           <div className="pv-reminder-text"><b>Today's reading is waiting!</b><span>You haven't completed Proverbs {tc} yet.</span></div>
           <button className="pv-reminder-btn" onClick={()=>{setOpen(tc);setTimeout(()=>rowRefs.current[tc]?.scrollIntoView({behavior:"smooth",block:"center"}),60);}}>Read now →</button>
         </div>
       )}
-      {tc&&!readOnly&&(myEntries[tc]?.verse?.trim()||myEntries[tc]?.meaning?.trim())&&(
+      {tc&&!readOnly&&myEntries[tc]?.read&&(
         <div className="pv-reminder done">
           <span className="pv-reminder-icon">✅</span>
           <div className="pv-reminder-text"><b>Proverbs {tc} complete!</b><span>Well done — you've read today's chapter.</span></div>
@@ -1305,7 +1356,7 @@ export default function ProverbsChallenge() {
                 <div className="pv-dch">Proverbs {chapter}{tc===chapter&&<span className="pv-tag">Today</span>}</div>
                 <div className="pv-dtheme">{theme}</div>
               </div>
-              <div className={"pv-dot"+(hasEntry?" done":"")}>{hasEntry?"✓":""}</div>
+              <div className={"pv-dot"+(entry.read?" done":"")}>{entry.read?"✓":""}</div>
             </button>
 
             {isOpen&&(
@@ -1362,6 +1413,11 @@ export default function ProverbsChallenge() {
                         <div className="pv-finished">
                           {entry.verse?.trim()&&<div className="pv-fin-verse">"{entry.verse}"</div>}
                           {entry.meaning?.trim()&&<div className="pv-fin-meaning">{entry.meaning}</div>}
+                          <div className={"pv-readcheck"+(entry.read?" on":"")} onClick={()=>toggleRead(chapter)} role="checkbox" aria-checked={!!entry.read}>
+                            <span className="pv-readbox">{entry.read?"✓":""}</span>
+                            <span>{entry.read?`Read — Proverbs ${chapter} complete`:`I have read Proverbs ${chapter}`}</span>
+                          </div>
+                          {readErr[chapter]&&<div className="pv-readerr">{readErr[chapter]}</div>}
                           <button className="pv-editbtn" onClick={()=>setEditMode(chapter,true)}>✏️ Edit</button>
                           <CommentsThread
                             soc={mySoc} me={me} isAdmin={isAdminUser(me)}
