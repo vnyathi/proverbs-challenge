@@ -36,6 +36,10 @@ const THEMES = [
 ];
 
 const ADMIN_NAME = "Vincent";
+// Admin is matched by user ID (survives display-name changes). Your ID was
+// created from your original name "Vincent", so it looks like vincent-XXXX.
+// To lock admin to your exact ID, add it to ADMIN_IDS below, e.g. "vincent-ab12".
+const ADMIN_IDS = [];
 const MOTIVATIONS = [
   "Well done, {name}! Wisdom is taking root in you.",
   "Another step closer to a wiser heart, {name}.",
@@ -50,7 +54,7 @@ const MOTIVATIONS = [
   "Small daily steps, {name} — this is how wisdom is built.",
   "You're not just reading Proverbs, {name} — you're living it.",
 ];
-const isAdminUser = (me) => me && me.name.trim().toLowerCase() === ADMIN_NAME.trim().toLowerCase();
+const isAdminUser = (me) => !!me && (ADMIN_IDS.includes(me.id) || /^vincent-[a-z0-9]{4}$/.test(me.id||""));
 const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "reader";
 const palette = ["#b0833f","#6b7f5e","#9c5a45","#5e6f86","#8a6e9c","#a07b54"];
 const REACTIONS = ["🙏","❤️","🔥","🌿","✨","🙌","😊","😢","💯","👏","🕊️","☀️","🌟","💛","🤍","🎶","📖","🫶","😇","💪","🥹","🤩"];
@@ -472,7 +476,7 @@ export default function ProverbsChallenge() {
   // ── Participants filtered by active group ───────────────────────────────────
   const visibleParticipants = activeGroup
     ? participants.filter(p=>(activeGroup.members||[]).includes(p.id))
-    : participants.filter(p=>!p.isPrivate || p.id===me?.id);
+    : participants.filter(p=>!p.isPrivate || p.id===me?.id || isAdminUser(me));
 
   // ── Completion tracking — a chapter counts as done only when the reader
   //    has ticked "I have read" (which itself requires both reflections). ──────
@@ -876,6 +880,7 @@ export default function ProverbsChallenge() {
     .pv-people .pv-lead{font-style:italic;color:var(--soft);font-size:13px;font-family:'Spectral',serif;width:100%;margin-bottom:2px;}
     .pv-pill{display:inline-flex;align-items:center;gap:6px;cursor:pointer;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:3px 11px 3px 3px;font-size:13px;font-family:'Fraunces',serif;color:var(--ink);}
     .pv-pill.active{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold);}
+    .pv-pill.private{opacity:.6;cursor:default;font-style:italic;}
     .pv-viewbar{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#efe4c8;border:1px solid var(--gold);border-radius:10px;padding:10px 14px;margin:6px 0 12px;}
     .pv-viewbar .vt{font-family:'Fraunces',serif;font-size:14px;color:var(--gold-d);display:flex;align-items:center;gap:8px;}
     /* Reminder */
@@ -1334,8 +1339,9 @@ export default function ProverbsChallenge() {
           {[...visibleParticipants].map((p,i)=>{
             const isMe=p.id===me.id;
             if(isMe) return null;
+            if(p.isPrivate) return <span key={p.id} className="pv-pill private" title="Private — reflections hidden"><Avatar name={p.name} i={i}/>{p.name} 🔒</span>;
             const active=viewing&&viewing.id===p.id;
-            return <button key={p.id} className={"pv-pill"+(active?" active":"")} onClick={()=>setViewing(active?null:p)}><Avatar name={p.name} i={i}/>{p.name}{p.isPrivate?" 🔒":""}</button>;
+            return <button key={p.id} className={"pv-pill"+(active?" active":"")} onClick={()=>setViewing(active?null:p)}><Avatar name={p.name} i={i}/>{p.name}</button>;
           })}
           {!readOnly&&<button className={"pv-pill"+(viewing===null?" active":"")} onClick={()=>setViewing(null)}><Avatar name={me.name} i={0}/>{me.name} (you)</button>}
         </div>
