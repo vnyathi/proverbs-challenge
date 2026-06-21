@@ -63,6 +63,13 @@ function todayChapter() {
   return d.getMonth() === 6 ? d.getDate() : null;
 }
 
+// First chapter not yet marked read — used for sequential unlocking.
+function firstUnread(entries) {
+  const e = entries || {};
+  for (let c = 1; c <= 31; c++) if (!(e[c] && e[c].read)) return c;
+  return 31;
+}
+
 // ── PDF ───────────────────────────────────────────────────────────────────────
 async function downloadPDF(me, entries) {
   if (!window.jspdf) {
@@ -597,18 +604,19 @@ export default function ProverbsChallenge() {
 
   useEffect(()=>{
     (async()=>{
+      let loadedEntries={};
       try {
         const saved=localStorage.getItem("me");
         if(saved){
           const p=JSON.parse(saved); setMe(p);
           setIsPrivate(p.isPrivate||false);
-          try{const m=await store.get("user:"+p.id,true);if(m&&m.value){const d=JSON.parse(m.value);setMyEntries(d.entries||{});}}catch(e){}
+          try{const m=await store.get("user:"+p.id,true);if(m&&m.value){const d=JSON.parse(m.value);loadedEntries=d.entries||{};setMyEntries(loadedEntries);}}catch(e){}
           await loadNotifications(p);
           await loadGroups(p);
         }
       }catch(e){}
       await loadParticipants(); await loadSocial();
-      setOpen(todayChapter()||1); setLoading(false);
+      setOpen(firstUnread(loadedEntries)); setLoading(false);
     })();
   },[loadParticipants,loadSocial,loadNotifications,loadGroups]);
 
@@ -652,7 +660,7 @@ export default function ProverbsChallenge() {
   const resume=async person=>{
     const p={id:person.id,name:person.name,pinHash:person.pinHash,isPrivate:person.isPrivate||false};
     setMe(p); setMyEntries(person.entries||{}); setIsPrivate(p.isPrivate);
-    setOpen(todayChapter()||1);
+    setOpen(firstUnread(person.entries||{}));
     localStorage.setItem("me",JSON.stringify(p));
     localStorage.setItem("pv-lastUser",p.id);
     await loadGroups(p);
@@ -674,7 +682,7 @@ export default function ProverbsChallenge() {
     const id=slug(name)+"-"+Math.random().toString(36).slice(2,6);
     const pinHash=await hashPin(id,pin);
     const person={id,name,pinHash,isPrivate:false};
-    setMe(person); setMyEntries({}); setOpen(todayChapter()||1); setIsPrivate(false);
+    setMe(person); setMyEntries({}); setOpen(1); setIsPrivate(false);
     localStorage.setItem("me",JSON.stringify(person));
     localStorage.setItem("pv-lastUser",id);
     try{await store.set("user:"+id,JSON.stringify({...person,entries:{},updatedAt:Date.now()}),true);loadParticipants();}catch(e){}
@@ -890,6 +898,9 @@ export default function ProverbsChallenge() {
     .pv-tag{font-family:'Fraunces',serif;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#fff;background:var(--gold-d);border-radius:10px;padding:2px 7px;}
     .pv-dtheme{font-style:italic;color:var(--soft);font-size:13px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
     .pv-dot{width:22px;height:22px;border-radius:50%;flex:0 0 auto;border:1.5px solid var(--line);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;}
+    .pv-drow.locked{opacity:.5;}
+    .pv-drow.locked .pv-badge{filter:grayscale(.6);}
+    .pv-dot.locked{border:none;background:transparent;font-size:15px;}
     .pv-dot.done{background:var(--gold);border-color:var(--gold);}
     .pv-dbody{padding:2px 14px 16px;border-top:1px solid var(--line);}
     /* Tabs */
@@ -1328,13 +1339,13 @@ export default function ProverbsChallenge() {
         </div>
       )}
 
-      {tc&&<button className="pv-todaybtn" onClick={()=>{setOpen(tc);setTimeout(()=>rowRefs.current[tc]?.scrollIntoView({behavior:"smooth",block:"center"}),60);}}>Go to today · Proverbs {tc}</button>}
+      {tc&&(()=>{const target=(tc>1&&!myEntries[tc-1]?.read)?firstUnread(myEntries):tc;return <button className="pv-todaybtn" onClick={()=>{setOpen(target);setTimeout(()=>rowRefs.current[target]?.scrollIntoView({behavior:"smooth",block:"center"}),60);}}>{target===tc?`Go to today · Proverbs ${tc}`:`Continue · Proverbs ${target}`}</button>;})()}
 
       {tc&&!readOnly&&!myEntries[tc]?.read&&(
         <div className="pv-reminder">
           <span className="pv-reminder-icon">📖</span>
           <div className="pv-reminder-text"><b>Today's reading is waiting!</b><span>You haven't completed Proverbs {tc} yet.</span></div>
-          <button className="pv-reminder-btn" onClick={()=>{setOpen(tc);setTimeout(()=>rowRefs.current[tc]?.scrollIntoView({behavior:"smooth",block:"center"}),60);}}>Read now →</button>
+          <button className="pv-reminder-btn" onClick={()=>{const target=(tc>1&&!myEntries[tc-1]?.read)?firstUnread(myEntries):tc;setOpen(target);setTimeout(()=>rowRefs.current[target]?.scrollIntoView({behavior:"smooth",block:"center"}),60);}}>Read now →</button>
         </div>
       )}
       {tc&&!readOnly&&myEntries[tc]?.read&&(
@@ -1351,23 +1362,33 @@ export default function ProverbsChallenge() {
         const entry=readOnly?(viewing.entries?.[chapter]||{}):(myEntries[chapter]||{});
         const hasEntry=entry.verse?.trim()||entry.meaning?.trim();
         const isOpen=open===chapter,tab=getTab(chapter);
+        const locked=!readOnly&&chapter>1&&!myEntries[chapter-1]?.read;
         const mySoc=getSocial(me.id,chapter);
         const friends=readOnly?[]:visibleParticipants.filter(p=>{
           try{return p.id!==me.id&&!p.isPrivate&&p.entries&&p.entries[chapter]&&(p.entries[chapter].verse?.trim()||p.entries[chapter].meaning?.trim());}catch(e){return false;}
         });
 
         return (
-          <div className={"pv-day"+(tc===chapter?" today":"")} key={chapter} ref={el=>rowRefs.current[chapter]=el}>
-            <button className="pv-drow" onClick={()=>{setOpen(isOpen?null:chapter);setNoteIdx(0);setCommentDraft("");setPicker(null);}}>
+          <div className={"pv-day"+(tc===chapter?" today":"")+(locked?" locked":"")} key={chapter} ref={el=>rowRefs.current[chapter]=el}>
+            <button className={"pv-drow"+(locked?" locked":"")} onClick={()=>{
+              if(locked){
+                const fu=firstUnread(myEntries);
+                setToast({title:"Chapter locked",icon:"🔒",message:`Finish Proverbs ${chapter-1} first to unlock Proverbs ${chapter}.`});
+                setOpen(fu);setNoteIdx(0);setCommentDraft("");setPicker(null);
+                setTimeout(()=>rowRefs.current[fu]?.scrollIntoView({behavior:"smooth",block:"center"}),60);
+                return;
+              }
+              setOpen(isOpen?null:chapter);setNoteIdx(0);setCommentDraft("");setPicker(null);
+            }}>
               <div className="pv-badge">{chapter}<small>Jul {chapter}</small></div>
               <div className="pv-dmid">
                 <div className="pv-dch">Proverbs {chapter}{tc===chapter&&<span className="pv-tag">Today</span>}</div>
                 <div className="pv-dtheme">{theme}</div>
               </div>
-              <div className={"pv-dot"+(entry.read?" done":"")}>{entry.read?"✓":""}</div>
+              <div className={"pv-dot"+(entry.read?" done":"")+(locked?" locked":"")}>{entry.read?"✓":locked?"🔒":""}</div>
             </button>
 
-            {isOpen&&(
+            {isOpen&&!locked&&(
               <div className="pv-dbody">
                 {readOnly?(
                   <>
@@ -1556,9 +1577,9 @@ export default function ProverbsChallenge() {
 
     {toast&&(
       <div className="pv-toast" onClick={()=>setToast(null)}>
-        <span className="pv-toast-icon">✨</span>
+        <span className="pv-toast-icon">{toast.icon||"✨"}</span>
         <div className="pv-toast-body">
-          <div className="pv-toast-title">Proverbs {toast.chapter} complete!</div>
+          <div className="pv-toast-title">{toast.title||`Proverbs ${toast.chapter} complete!`}</div>
           <div className="pv-toast-msg">{toast.message}</div>
         </div>
       </div>
