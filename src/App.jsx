@@ -778,11 +778,11 @@ export default function ProverbsChallenge() {
     .pv-readcheck.on .pv-readbox{background:#6b7f5e;border-color:#6b7f5e;}
     .pv-readerr{margin-top:8px;font-family:'Fraunces',serif;font-size:13px;color:#9c5a45;background:#f6ece8;border:1px solid #e3cabf;border-radius:10px;padding:8px 12px;}
     .pv-lbrow.me{background:#f3eede;border-radius:8px;margin:2px -8px;padding-left:8px;padding-right:8px;}
-    .pv-or{text-align:center;font-style:italic;color:var(--soft);font-size:13px;margin:18px 0 0;}
+    .pv-or{text-align:center;font-style:italic;color:var(--soft);font-size:13px;margin:24px 0 2px;}
     .pv-err{color:#9c5a45;font-size:13px;margin-top:9px;text-align:center;font-style:italic;font-weight:500;}
     .pv-notice{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:8px;padding:13px 15px;margin:20px auto 0;max-width:430px;font-size:13.5px;line-height:1.5;}
     .pv-notice b{font-family:'Fraunces',serif;font-weight:600;color:var(--gold-d);}
-    .pv-credit{text-align:center;font-size:10px;letter-spacing:.1em;color:var(--soft);margin-top:16px;opacity:.7;}
+    .pv-credit{text-align:center;font-size:12px;letter-spacing:.06em;color:var(--gold-d);margin-top:16px;font-family:'Fraunces',serif;}
     /* Modal */
     .pv-modal{position:fixed;inset:0;background:rgba(44,36,23,.5);display:flex;align-items:center;justify-content:center;padding:20px;z-index:60;}
     .pv-modalcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:24px 20px;max-width:330px;width:100%;text-align:center;}
@@ -1017,23 +1017,22 @@ export default function ProverbsChallenge() {
           <div className="pv-step"><div className="pv-snum">2</div><div className="pv-stext"><b>Pick your favourite verse</b> and write what it means to you.</div></div>
           <div className="pv-step"><div className="pv-snum">3</div><div className="pv-stext"><b>Share with friends</b> — join a group or read together publicly.</div></div>
         </div>
-        {participants.length>0&&(
-          <div className="pv-returning">
-            <div className="pv-label" style={{textAlign:"center",marginTop:22}}>Returning? Tap your name</div>
-            <div className="pv-rbtns">{orderedParticipants.map(({p,idx})=><button key={p.id} className={"pv-rbtn"+(p.id===lastUserId?" pv-rbtn-last":"")} onClick={()=>askPin(p)}><Avatar name={p.name} i={idx}/><span className="pv-rbtn-name">{p.name}</span></button>)}</div>
-            <div className="pv-or">— or join as someone new —</div>
-          </div>
-        )}
         <div className="pv-join">
           <div className="pv-label">{participants.length>0?"New here? Enter your name":"Enter your name to join"}</div>
-          <input className="pv-input" value={nameInput} onChange={e=>{setNameInput(e.target.value);setJoinError("");}} onKeyDown={e=>e.key==="Enter"&&join()} placeholder="Your name" autoFocus/>
+          <input className="pv-input" value={nameInput} onChange={e=>{setNameInput(e.target.value);setJoinError("");}} onKeyDown={e=>e.key==="Enter"&&join()} placeholder="Your name"/>
           <div className="pv-label" style={{marginTop:16}}>Create a PIN (4–8 digits)</div>
           <input className="pv-input" value={newPin} type="password" inputMode="numeric" maxLength={8} onChange={e=>{setNewPin(e.target.value.replace(/\D/g,""));setJoinError("");}} onKeyDown={e=>e.key==="Enter"&&join()} placeholder="••••"/>
           {joinError&&<div className="pv-err">{joinError}</div>}
           <button className="pv-btn" onClick={join}>Begin the journey</button>
         </div>
+        {participants.length>0&&(
+          <div className="pv-returning">
+            <div className="pv-or">— already joined? tap your name —</div>
+            <div className="pv-rbtns">{orderedParticipants.map(({p,idx})=><button key={p.id} className={"pv-rbtn"+(p.id===lastUserId?" pv-rbtn-last":"")} onClick={()=>askPin(p)}><Avatar name={p.name} i={idx}/><span className="pv-rbtn-name">{p.name}</span></button>)}</div>
+          </div>
+        )}
         <div className="pv-notice"><b>A shared reading.</b> By default your entries are public. You can switch to private or join a group anytime after signing in.</div>
-        <p className="pv-credit">created by vincent nyathi</p>
+        <p className="pv-credit">created by Vincent Nyathi</p>
       </div>
     </div>
     {pinFor&&(
@@ -1506,7 +1505,7 @@ export default function ProverbsChallenge() {
 
       {!readOnly&&<button className="pv-dl" onClick={()=>downloadPDF(me,myEntries)}>⬇ Download My 31-Day Devotional (PDF)</button>}
       <p className="pv-foot">"Your word is a lamp to my feet and a light to my path." — Psalm 119:105</p>
-      <p className="pv-credit">created by vincent nyathi</p>
+      <p className="pv-credit">created by Vincent Nyathi</p>
       {!readOnly&&<button className="pv-leave" onClick={()=>setConfirmDelete(true)}>leave the challenge</button>}
     </div>
 
