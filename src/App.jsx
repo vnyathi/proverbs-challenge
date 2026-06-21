@@ -1381,7 +1381,7 @@ export default function ProverbsChallenge() {
             <button className={"pv-drow"+(locked?" locked":"")} onClick={()=>{
               if(locked){
                 const fu=firstUnread(myEntries);
-                setToast({title:"Chapter locked",icon:"🔒",message:`Finish Proverbs ${chapter-1} first to unlock Proverbs ${chapter}.`});
+                setToast({title:"Chapter locked",icon:"🔒",message:`Finish your reflection on Proverbs ${chapter-1} first to unlock Proverbs ${chapter}.`});
                 setOpen(fu);setNoteIdx(0);setCommentDraft("");setPicker(null);
                 setTimeout(()=>rowRefs.current[fu]?.scrollIntoView({behavior:"smooth",block:"center"}),60);
                 return;
