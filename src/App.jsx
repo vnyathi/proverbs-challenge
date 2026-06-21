@@ -760,8 +760,11 @@ export default function ProverbsChallenge() {
     .pv-input:focus{border-color:var(--gold);}
     .pv-btn{margin-top:18px;width:100%;background:var(--ink);color:#f6eed9;border:none;font-family:'Fraunces',serif;font-weight:600;letter-spacing:.08em;text-transform:uppercase;font-size:14px;padding:15px;border-radius:6px;cursor:pointer;}
     .pv-returning{margin:22px auto 0;max-width:430px;}
-    .pv-rbtns{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:10px;}
-    .pv-rbtn{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:6px 14px 6px 7px;cursor:pointer;font-family:'Fraunces',serif;font-size:14px;color:var(--ink);}
+    .pv-rbtns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;}
+    .pv-rbtn{display:flex;align-items:center;gap:9px;width:100%;min-width:0;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:8px 14px 8px 8px;cursor:pointer;font-family:'Fraunces',serif;font-size:14px;color:var(--ink);transition:border-color .15s,transform .05s;}
+    .pv-rbtn:hover{border-color:var(--soft);}
+    .pv-rbtn:active{transform:scale(.98);}
+    .pv-rbtn-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
     .pv-rbtn-last{order:-1;background:#ece6f5;border:2px solid #8a6e9c;box-shadow:0 2px 10px rgba(138,110,156,.22);font-weight:600;}
     .pv-name{font-family:'Fraunces',serif;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;}
     .pv-name:hover{color:var(--gold-d);}
@@ -1017,7 +1020,7 @@ export default function ProverbsChallenge() {
         {participants.length>0&&(
           <div className="pv-returning">
             <div className="pv-label" style={{textAlign:"center",marginTop:22}}>Returning? Tap your name</div>
-            <div className="pv-rbtns">{orderedParticipants.map(({p,idx})=><button key={p.id} className={"pv-rbtn"+(p.id===lastUserId?" pv-rbtn-last":"")} onClick={()=>askPin(p)}><Avatar name={p.name} i={idx}/>{p.name}</button>)}</div>
+            <div className="pv-rbtns">{orderedParticipants.map(({p,idx})=><button key={p.id} className={"pv-rbtn"+(p.id===lastUserId?" pv-rbtn-last":"")} onClick={()=>askPin(p)}><Avatar name={p.name} i={idx}/><span className="pv-rbtn-name">{p.name}</span></button>)}</div>
             <div className="pv-or">— or join as someone new —</div>
           </div>
         )}
@@ -1481,6 +1484,11 @@ export default function ProverbsChallenge() {
                             <div className="pv-field"><div className="pv-flabel">What it means to me</div>
                               <textarea className="pv-ta" value={entry.meaning||""} placeholder="Write your reflection…" onFocus={grow} onChange={e=>{grow(e);update(chapter,"meaning",e.target.value);}}/>
                             </div>
+                            <div className={"pv-readcheck"+(entry.read?" on":"")} onClick={()=>toggleRead(chapter)} role="checkbox" aria-checked={!!entry.read}>
+                              <span className="pv-readbox">{entry.read?"✓":""}</span>
+                              <span>{entry.read?`Read — Proverbs ${chapter} complete`:`I have read Proverbs ${chapter}`}</span>
+                            </div>
+                            {readErr[chapter]&&<div className="pv-readerr">{readErr[chapter]}</div>}
                             {isEditing(chapter)&&(
                               <button className="pv-editbtn" style={{marginTop:10,background:"var(--gold-d)",color:"#fff",border:"none"}} onClick={()=>setEditMode(chapter,false)}>✓ Done editing</button>
                             )}
