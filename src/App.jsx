@@ -818,7 +818,7 @@ export default function ProverbsChallenge() {
     .pv-grpbtn{display:inline-flex;align-items:center;gap:5px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:5px 12px;font-family:'Fraunces',serif;font-size:13px;color:var(--ink);cursor:pointer;}
     .pv-grpbtn.active{background:var(--gold-d);color:#fff;border-color:var(--gold-d);}
     .pv-grpbtn.manage{background:transparent;border-style:dashed;color:var(--gold-d);}
-    .pv-grpbtn.prog{background:#fff3d6;border:1.5px solid var(--gold);color:var(--gold-d);font-weight:600;box-shadow:0 1px 6px rgba(160,115,50,.18);}
+    .pv-grpbtn.prog{background:var(--gold-d);color:#fff;border:1px solid var(--gold-d);font-weight:600;}
     /* Group panel */
     .pv-grouppanel{position:fixed;inset:0;background:rgba(44,36,23,.5);display:flex;align-items:flex-end;justify-content:center;z-index:65;padding:0;}
     .pv-groupcard{background:var(--card);border-radius:20px 20px 0 0;width:100%;max-width:680px;padding:24px 20px 40px;max-height:85vh;overflow-y:auto;}
