@@ -871,6 +871,12 @@ export default function ProverbsChallenge() {
     .pv-reminder-text b{font-family:'Fraunces',serif;font-weight:600;font-size:14px;}
     .pv-reminder-text span{font-size:12px;color:var(--soft);font-style:italic;}
     .pv-reminder-btn{background:var(--gold-d);color:#fff;border:none;border-radius:6px;padding:8px 14px;font-family:'Fraunces',serif;font-size:13px;cursor:pointer;}
+    .pv-prevremind{display:flex;align-items:center;gap:11px;background:#f4eef9;border:1.5px solid #c9b6dd;border-radius:10px;padding:11px 13px;margin:0 0 14px;flex-wrap:wrap;}
+    .pv-prevremind-icon{font-size:20px;flex:0 0 auto;}
+    .pv-prevremind-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+    .pv-prevremind-text b{font-family:'Fraunces',serif;font-weight:600;font-size:14px;color:#5a4470;}
+    .pv-prevremind-text span{font-size:12px;color:var(--soft);font-style:italic;}
+    .pv-prevremind-btn{background:#8a6e9c;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-family:'Fraunces',serif;font-size:13px;cursor:pointer;}
     .pv-todaybtn{display:block;width:100%;margin:0 0 14px;background:var(--gold-d);color:#fff;border:none;font-family:'Fraunces',serif;font-size:14px;padding:12px;border-radius:8px;cursor:pointer;font-weight:600;}
     .pv-hint{text-align:center;font-style:italic;color:var(--soft);font-size:13px;margin:2px 2px 14px;}
     /* Days */
@@ -1032,7 +1038,7 @@ export default function ProverbsChallenge() {
           </div>
         )}
         <div className="pv-notice"><b>A shared reading.</b> By default your entries are public. You can switch to private or join a group anytime after signing in.</div>
-        <p className="pv-credit">created by Vincent Nyathi</p>
+        <p className="pv-credit">Created by Vincent Nyathi</p>
       </div>
     </div>
     {pinFor&&(
@@ -1410,6 +1416,20 @@ export default function ProverbsChallenge() {
                   </>
                 ):(
                   <>
+                    {chapter>1&&!myEntries[chapter-1]?.read&&(()=>{
+                      const pv=chapter-1, pe=myEntries[pv]||{};
+                      const reflDone=pe.verse?.trim()&&pe.meaning?.trim();
+                      return (
+                        <div className="pv-prevremind">
+                          <span className="pv-prevremind-icon">{reflDone?"📌":"✍️"}</span>
+                          <div className="pv-prevremind-text">
+                            <b>{reflDone?`Don't forget Proverbs ${pv}`:`Finish Proverbs ${pv} first`}</b>
+                            <span>{reflDone?"You haven't marked it as read yet.":"Complete your reflection — your verse and what it means — before moving on."}</span>
+                          </div>
+                          <button className="pv-prevremind-btn" onClick={()=>{setOpen(pv);setTimeout(()=>rowRefs.current[pv]?.scrollIntoView({behavior:"smooth",block:"center"}),60);}}>{reflDone?"Go back →":"Complete it →"}</button>
+                        </div>
+                      );
+                    })()}
                     {hasEntry&&!isEditing(chapter)?(
                       <div>
                         <div className="pv-finished">
@@ -1505,7 +1525,7 @@ export default function ProverbsChallenge() {
 
       {!readOnly&&<button className="pv-dl" onClick={()=>downloadPDF(me,myEntries)}>⬇ Download My 31-Day Devotional (PDF)</button>}
       <p className="pv-foot">"Your word is a lamp to my feet and a light to my path." — Psalm 119:105</p>
-      <p className="pv-credit">created by Vincent Nyathi</p>
+      <p className="pv-credit">Created by Vincent Nyathi</p>
       {!readOnly&&<button className="pv-leave" onClick={()=>setConfirmDelete(true)}>leave the challenge</button>}
     </div>
 
