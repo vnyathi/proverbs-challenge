@@ -692,6 +692,7 @@ export default function ProverbsChallenge() {
     setMyEntries(next); if(me) persist(next,me,isPrivate);
     if(readErr[chapter]) setReadErr(e=>({...e,[chapter]:""}));
   };
+  const wordCount=s=>(s||"").trim().split(/\s+/).filter(Boolean).length;
   const toggleRead=(chapter)=>{
     const cur=myEntries[chapter]||{};
     if(cur.read){ // un-mark
@@ -699,9 +700,14 @@ export default function ProverbsChallenge() {
       setMyEntries(next); if(me) persist(next,me,isPrivate);
       return;
     }
-    // Strict rule: can't mark read until BOTH reflections are written
-    if(!(cur.verse?.trim()&&cur.meaning?.trim())){
-      setReadErr(e=>({...e,[chapter]:"Finish your reflection first — add your favourite verse and what it means to you before marking this chapter as read."}));
+    // Strict rule: need a verse, and a reflection of at least 20 words
+    if(!cur.verse?.trim()){
+      setReadErr(e=>({...e,[chapter]:"Add your favourite verse before marking this chapter as read."}));
+      return;
+    }
+    const wc=wordCount(cur.meaning);
+    if(wc<20){
+      setReadErr(e=>({...e,[chapter]:`Your reflection needs at least 20 words — you have ${wc}. Share a little more about what it means to you.`}));
       return;
     }
     setReadErr(e=>({...e,[chapter]:""}));
@@ -901,6 +907,8 @@ export default function ProverbsChallenge() {
     .pv-drow.locked{opacity:.5;}
     .pv-drow.locked .pv-badge{filter:grayscale(.6);}
     .pv-dot.locked{border:none;background:transparent;font-size:15px;}
+    .pv-wordcount{text-align:right;font-family:'Fraunces',serif;font-size:12px;color:var(--soft);margin-top:5px;}
+    .pv-wordcount.ok{color:#6b7f5e;font-weight:600;}
     .pv-dot.done{background:var(--gold);border-color:var(--gold);}
     .pv-dbody{padding:2px 14px 16px;border-top:1px solid var(--line);}
     /* Tabs */
@@ -1451,7 +1459,7 @@ export default function ProverbsChallenge() {
                         </div>
                       );
                     })()}
-                    {hasEntry&&!isEditing(chapter)?(
+                    {entry.read&&!isEditing(chapter)?(
                       <div>
                         <div className="pv-finished">
                           {entry.verse?.trim()&&<div className="pv-fin-verse">"{entry.verse}"</div>}
@@ -1522,7 +1530,8 @@ export default function ProverbsChallenge() {
                               <textarea className="pv-ta verse" value={entry.verse||""} placeholder="Write or paste your favourite verse…" onFocus={grow} onChange={e=>{grow(e);update(chapter,"verse",e.target.value);}}/>
                             </div>
                             <div className="pv-field"><div className="pv-flabel">What it means to me</div>
-                              <textarea className="pv-ta" value={entry.meaning||""} placeholder="Write your reflection…" onFocus={grow} onChange={e=>{grow(e);update(chapter,"meaning",e.target.value);}}/>
+                              <textarea className="pv-ta" value={entry.meaning||""} placeholder="Write your reflection… (at least 20 words)" onFocus={grow} onChange={e=>{grow(e);update(chapter,"meaning",e.target.value);}}/>
+                              {(()=>{const wc=wordCount(entry.meaning);return <div className={"pv-wordcount"+(wc>=20?" ok":"")}>{wc>=20?`✓ ${wc} words`:`${wc} / 20 words`}</div>;})()}
                             </div>
                             <div className={"pv-readcheck"+(entry.read?" on":"")} onClick={()=>toggleRead(chapter)} role="checkbox" aria-checked={!!entry.read}>
                               <span className="pv-readbox">{entry.read?"✓":""}</span>
