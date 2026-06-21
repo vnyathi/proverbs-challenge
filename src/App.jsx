@@ -372,6 +372,7 @@ export default function ProverbsChallenge() {
   const [showNotifs,setShowNotifs]=useState(false);
   const [isPrivate,setIsPrivate]=useState(false);
   const [showLeaderboard,setShowLeaderboard]=useState(false);
+  const [showPeople,setShowPeople]=useState(false);
   const [lbChapter,setLbChapter]=useState(null);
   const [toast,setToast]=useState(null);
   const [showAllDone,setShowAllDone]=useState(false);
@@ -876,8 +877,11 @@ export default function ProverbsChallenge() {
     .pv-toast-msg{font-size:13px;color:#e8dcc0;margin-top:2px;font-style:italic;line-height:1.4;}
     @keyframes pv-toast-in{from{opacity:0;transform:translate(-50%,14px);}to{opacity:1;transform:translate(-50%,0);}}
     /* People */
-    .pv-people{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:4px 2px 14px;}
-    .pv-people .pv-lead{font-style:italic;color:var(--soft);font-size:13px;font-family:'Spectral',serif;width:100%;margin-bottom:2px;}
+    .pv-people{margin:4px 2px 14px;}
+    .pv-peoplehd{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 13px;cursor:pointer;font-family:'Spectral',serif;}
+    .pv-peoplelead{font-style:italic;color:var(--ink);font-size:13px;}
+    .pv-peoplechev{font-size:12px;color:var(--gold-d);font-weight:600;white-space:nowrap;}
+    .pv-peoplegrid{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:10px;max-height:240px;overflow-y:auto;padding:2px;}
     .pv-pill{display:inline-flex;align-items:center;gap:6px;cursor:pointer;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:3px 11px 3px 3px;font-size:13px;font-family:'Fraunces',serif;color:var(--ink);}
     .pv-pill.active{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold);}
     .pv-pill.private{opacity:.6;cursor:default;font-style:italic;}
@@ -1333,19 +1337,29 @@ export default function ProverbsChallenge() {
       )}
 
       {/* People pills */}
-      {visibleParticipants.filter(p=>p.id!==me.id).length>0&&(
+      {visibleParticipants.filter(p=>p.id!==me.id).length>0&&(()=>{
+        const others=visibleParticipants.filter(p=>p.id!==me.id).length;
+        return (
         <div className="pv-people">
-          <span className="pv-lead">{activeGroup?`👥 ${activeGroup.name}`:"🌍 Everyone"} · Tap a name to read their page</span>
-          {[...visibleParticipants].map((p,i)=>{
-            const isMe=p.id===me.id;
-            if(isMe) return null;
-            if(p.isPrivate) return <span key={p.id} className="pv-pill private" title="Private — reflections hidden"><Avatar name={p.name} i={i}/>{p.name} 🔒</span>;
-            const active=viewing&&viewing.id===p.id;
-            return <button key={p.id} className={"pv-pill"+(active?" active":"")} onClick={()=>setViewing(active?null:p)}><Avatar name={p.name} i={i}/>{p.name}</button>;
-          })}
-          {!readOnly&&<button className={"pv-pill"+(viewing===null?" active":"")} onClick={()=>setViewing(null)}><Avatar name={me.name} i={0}/>{me.name} (you)</button>}
+          <button className="pv-peoplehd" onClick={()=>setShowPeople(s=>!s)}>
+            <span className="pv-peoplelead">{activeGroup?`👥 ${activeGroup.name}`:"🌍 Everyone"} · {others} {others===1?"reader":"readers"}</span>
+            <span className="pv-peoplechev">{showPeople?"Hide ▾":"Tap to read pages ▸"}</span>
+          </button>
+          {showPeople&&(
+            <div className="pv-peoplegrid">
+              {[...visibleParticipants].map((p,i)=>{
+                const isMe=p.id===me.id;
+                if(isMe) return null;
+                if(p.isPrivate) return <span key={p.id} className="pv-pill private" title="Private — reflections hidden"><Avatar name={p.name} i={i}/>{p.name} 🔒</span>;
+                const active=viewing&&viewing.id===p.id;
+                return <button key={p.id} className={"pv-pill"+(active?" active":"")} onClick={()=>setViewing(active?null:p)}><Avatar name={p.name} i={i}/>{p.name}</button>;
+              })}
+              {!readOnly&&<button className={"pv-pill"+(viewing===null?" active":"")} onClick={()=>setViewing(null)}><Avatar name={me.name} i={0}/>{me.name} (you)</button>}
+            </div>
+          )}
         </div>
-      )}
+        );
+      })()}
 
       {readOnly&&(
         <div className="pv-viewbar">
