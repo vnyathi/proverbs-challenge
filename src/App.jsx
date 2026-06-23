@@ -194,7 +194,6 @@ function BibleReader({chapter, onUseVerse}) {
   },[chapter]);
   return (
     <div>
-      <AudioPlayer chapter={chapter}/>
       {picked&&(
         <div className="pv-selvbanner">
           <div className="pv-selvlbl">Selected verse</div>
@@ -1561,6 +1560,7 @@ export default function ProverbsChallenge() {
                           <button className={"pv-tab"+(tab==="read"?" on":"")} onClick={()=>setTab(chapter,"read")}>📖 Read & Listen</button>
                           <button className={"pv-tab"+(tab==="journal"?" on":"")} onClick={()=>setTab(chapter,"journal")}>✍️ My Reflection</button>
                         </div>
+                        <AudioPlayer chapter={chapter}/>
                         {tab==="read"&&<BibleReader chapter={chapter} onUseVerse={v=>{update(chapter,"verse",v);setTab(chapter,"journal");}}/>}
                         {tab==="journal"&&(
                           <div>
