@@ -863,6 +863,10 @@ export default function ProverbsChallenge() {
     .pv-lbbar{flex:1;height:7px;background:var(--card2);border:1px solid var(--line);border-radius:6px;overflow:hidden;min-width:50px;}
     .pv-lbfill{height:100%;background:linear-gradient(90deg,var(--gold),var(--gold-d));}
     .pv-lbcount{font-family:'Fraunces',serif;font-size:11px;color:var(--soft);flex:0 0 auto;width:42px;text-align:right;}
+    .pv-lbdl{flex:0 0 auto;border:1px solid var(--line);background:var(--card);border-radius:6px;font-size:13px;line-height:1;padding:4px 7px;cursor:pointer;color:var(--soft);}
+    .pv-lbdl:hover{border-color:var(--gold-d);color:var(--gold-d);}
+    .pv-lbdl.done{background:var(--gold-d);border-color:var(--gold-d);color:#fff;}
+    .pv-lbdl.done:hover{color:#fff;opacity:.92;}
     .pv-lbcrownnote{font-size:12px;color:var(--soft);font-style:italic;margin-top:8px;text-align:center;}
     .pv-lbchips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
     .pv-lbchip{font-family:'Fraunces',serif;font-size:12px;background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:6px 4px;width:38px;cursor:pointer;color:var(--ink);display:flex;flex-direction:column;align-items:center;}
@@ -1136,7 +1140,7 @@ export default function ProverbsChallenge() {
       {/* Group bar */}
       <div className="pv-groupbar">
         <button className="pv-grpbtn prog" onClick={()=>setShowLeaderboard(true)}>🏆 Progress</button>
-        <button className={`pv-grpbtn${showTree?" active":""}`} onClick={()=>setShowTree(true)}>🌳 Tree</button>
+        <button className="pv-grpbtn prog" onClick={()=>setShowTree(true)}>🌳 Tree</button>
         <button className={`pv-grpbtn${!activeGroup?" active":""}`} onClick={()=>{setActiveGroup(null);setViewing(null);}}>
           🌍 Everyone
         </button>
@@ -1282,6 +1286,13 @@ export default function ProverbsChallenge() {
                     <span className="pv-lbname">{p.name}{p.id===me.id?" (you)":""}</span>
                     <div className="pv-lbbar"><div className="pv-lbfill" style={{width:`${(count/31)*100}%`}}/></div>
                     <span className="pv-lbcount">{count}/31</span>
+                    {isAdminUser(me)&&count>0&&(
+                      <button
+                        className={"pv-lbdl"+(count===31?" done":"")}
+                        title={`Download ${p.name}'s devotional (${count}/31)`}
+                        onClick={()=>downloadPDF(p,p.entries||{})}
+                      >⬇</button>
+                    )}
                   </div>
                 ));
               })()}
