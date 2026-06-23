@@ -1136,7 +1136,7 @@ export default function ProverbsChallenge() {
       {/* Group bar */}
       <div className="pv-groupbar">
         <button className="pv-grpbtn prog" onClick={()=>setShowLeaderboard(true)}>🏆 Progress</button>
-        <button className="pv-grpbtn" onClick={()=>setShowTree(true)}>🌳 Tree</button>
+        <button className={`pv-grpbtn${showTree?" active":""}`} onClick={()=>setShowTree(true)}>🌳 Tree</button>
         <button className={`pv-grpbtn${!activeGroup?" active":""}`} onClick={()=>{setActiveGroup(null);setViewing(null);}}>
           🌍 Everyone
         </button>
