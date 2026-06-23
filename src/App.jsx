@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { store } from "./store";
+import ProverbsTree from "./ProverbsTree";
 
 const THEMES = [
   "The fear of the Lord is the beginning of knowledge",
@@ -372,6 +373,7 @@ export default function ProverbsChallenge() {
   const [showNotifs,setShowNotifs]=useState(false);
   const [isPrivate,setIsPrivate]=useState(false);
   const [showLeaderboard,setShowLeaderboard]=useState(false);
+  const [showTree,setShowTree]=useState(false);
   const [showPeople,setShowPeople]=useState(false);
   const [lbChapter,setLbChapter]=useState(null);
   const [toast,setToast]=useState(null);
@@ -1134,6 +1136,7 @@ export default function ProverbsChallenge() {
       {/* Group bar */}
       <div className="pv-groupbar">
         <button className="pv-grpbtn prog" onClick={()=>setShowLeaderboard(true)}>🏆 Progress</button>
+        <button className="pv-grpbtn" onClick={()=>setShowTree(true)}>🌳 Tree</button>
         <button className={`pv-grpbtn${!activeGroup?" active":""}`} onClick={()=>{setActiveGroup(null);setViewing(null);}}>
           🌍 Everyone
         </button>
@@ -1317,6 +1320,9 @@ export default function ProverbsChallenge() {
           </div>
         </div>
       )}
+
+      {/* Tree of Proverbs study map */}
+      {showTree && <ProverbsTree onClose={()=>setShowTree(false)} />}
 
       {/* Announcements banner for active group */}
       {activeGroup && (activeGroup.announcements||[]).length > 0 && (
